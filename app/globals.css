@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
+
+  /* Ink: the navy-black of the sidebar, buttons and headings */
+  --color-ink: #1f1d2b;
+  --color-ink-soft: #2c2a3d;
+
+  /* Clinical pastels */
+  --color-lavender-50: #f4f2fe;
+  --color-lavender-100: #e9e5fd;
+  --color-lavender-200: #d9d3fb;
+  --color-lavender-400: #a99ff2;
+  --color-lavender-700: #5a4fc0;
+
+  --color-blush-50: #fff3f5;
+  --color-blush-100: #ffe3e9;
+  --color-blush-200: #fdcbd5;
+  --color-blush-300: #f9b0c0;
+  --color-blush-700: #b23f5c;
+
+  --color-mint-50: #effbf5;
+  --color-mint-100: #d9f5e7;
+  --color-mint-200: #b9ecd2;
+  --color-mint-400: #5ecf9b;
+  --color-mint-700: #2a7f57;
+
+  --color-powder-50: #eff6fe;
+  --color-powder-100: #ddecfd;
+  --color-powder-200: #c3ddfb;
+  --color-powder-700: #36679e;
+
+  --color-butter-50: #fff9ea;
+  --color-butter-100: #fdefcc;
+  --color-butter-700: #94660f;
+
+  --color-canvas: #f6f6f9;
+
+  --shadow-widget: 0 24px 60px -28px rgb(31 29 43 / 0.18), 0 2px 6px -2px rgb(31 29 43 / 0.04);
+  --shadow-float: 0 40px 120px -40px rgb(70 60 140 / 0.35);
+
+  --animate-critical: critical-pulse 2.2s ease-out infinite;
+  --animate-listening: listening 1.1s ease-in-out infinite;
+
+  @keyframes critical-pulse {
+    0% { box-shadow: 0 0 0 0 rgb(249 176 192 / 0.7), var(--shadow-widget); }
+    70% { box-shadow: 0 0 0 12px rgb(249 176 192 / 0), var(--shadow-widget); }
+    100% { box-shadow: 0 0 0 0 rgb(249 176 192 / 0), var(--shadow-widget); }
+  }
+  @keyframes listening {
+    0%, 100% { transform: scaleY(0.35); }
+    50% { transform: scaleY(1); }
+  }
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  min-height: 100dvh;
+  background: linear-gradient(135deg, #e7e2fb 0%, #dde5fb 45%, #f5e1ea 100%) fixed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+}
+
+/* Soft pastel form field used across staff screens */
+@utility input {
+  width: 100%;
+  border-radius: 1rem;
+  background: var(--color-canvas);
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  outline: none;
+  &:focus {
+    box-shadow: 0 0 0 4px var(--color-lavender-100);
+    background: white;
+  }
+}
+
+/* Pulse Flow logo: static for reduced-motion users */
+.pf-static { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .pf-anim { display: none; }
+  .pf-static { display: inline; }
+}
+
+/* Splash already seen in this tab: never paint it (set by the inline script in app/layout.tsx) */
+html[data-splash-seen] #pf-splash { display: none; }
+
+/* ── Splash intro (components/brand/SplashScreen.tsx) ─────────────────────── */
+/* White → blush → lavender, drifting slowly */
+.pf-bg {
+  background: linear-gradient(120deg, #ffffff 0%, #fff4f7 30%, #f6efff 65%, #ffffff 100%);
+  background-size: 220% 220%;
+  animation: pf-bg-shift 6s ease-in-out infinite alternate;
+}
+@keyframes pf-bg-shift {
+  from { background-position: 0% 30%; }
+  to { background-position: 100% 70%; }
+}
+/* Line draws from 0 to its full length (pathLength="1"), then stays */
+.pf-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: pf-draw 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes pf-draw { to { stroke-dashoffset: 0; } }
+/* Bead running along the finished line */
+.pf-travel {
+  offset-distance: 0%;
+  opacity: 0;
+  animation: pf-travel 1.6s ease-in-out 2.2s infinite;
+}
+@keyframes pf-travel {
+  0% { offset-distance: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+/* Ripples from the mark */
+.pf-ripple {
+  opacity: 0;
+  animation: pf-ripple 1.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+@keyframes pf-ripple {
+  from { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
+  to { transform: translate(-50%, -50%) scale(2.3); opacity: 0; }
+}
+/* Floating accents */
+.pf-float { animation: pf-float 7s ease-in-out infinite; }
+@keyframes pf-float {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(6px, -14px); }
+}
+.pf-spin { animation: pf-spin 14s linear infinite; }
+@keyframes pf-spin { to { transform: rotate(360deg); } }
+/* Progress bar */
+.pf-progress { width: 0; animation: pf-progress linear forwards; }
+@keyframes pf-progress { to { width: 100%; } }

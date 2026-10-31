@@ -1,0 +1,25 @@
+{
+  "name": "pulse-flow-video",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Remotion demo video for Pulse Flow",
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render PulseFlowDemo out/pulse-flow-demo.mp4",
+    "still": "remotion still PulseFlowDemo out/still.png",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.539",
+    "@remotion/google-fonts": "4.0.539",
+    "@remotion/paths": "4.0.539",
+    "@remotion/transitions": "4.0.539",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.539"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.2",
+    "typescript": "5.9.3"
+  }
+}
