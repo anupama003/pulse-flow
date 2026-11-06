@@ -1,0 +1,555 @@
+// Pulse Flow: Prisma schema (PostgreSQL)
+//
+// Multi-tenant: every patient-data table carries `facilityId`. The Prisma client extension in
+// lib/db.ts injects it into every query from the request context, so one branch can never
+// read another's rows, and records an AuditLog row for every read/write of patient data
+// (DPDP Act 2023).
+//
+// IPD (ward):  Handover → SbarNote (DRAFT → APPROVED) → ActionItem
+// OPD:         Appointment (token) → Prescription (DRAFT → SIGNED) → PharmacyOrder + LabOrder
+// Comms:       MessageLog (WhatsApp outbox)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  PG_NIGHT
+  PG_DAY
+  CONSULTANT
+  RECEPTIONIST
+  PHARMACIST
+  LAB_TECH
+  ADMIN
+}
+
+enum FacilityType {
+  HOSPITAL
+  CLINIC
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  UNKNOWN
+}
+
+enum Shift {
+  DAY
+  NIGHT
+}
+
+enum Source {
+  HANDOVER
+  ROUNDS
+}
+
+enum Priority {
+  STAT
+  HIGH
+  ROUTINE
+}
+
+enum ActionStatus {
+  PENDING
+  DONE
+  CANCELLED
+}
+
+enum ReviewStatus {
+  DRAFT
+  APPROVED
+  DISCARDED
+}
+
+enum AppointmentStatus {
+  BOOKED // online booking, not yet at the hospital
+  WAITING // checked in / walk-in, in the queue
+  IN_CONSULT // called into the room
+  COMPLETED
+  NO_SHOW
+  CANCELLED
+}
+
+enum BookingChannel {
+  ONLINE_VOICE // /book: patient dictated their problem
+  WALK_IN // front desk
+  PHONE
+}
+
+enum Urgency {
+  ROUTINE
+  SOON
+  EMERGENCY
+}
+
+enum RxStatus {
+  DRAFT // AI-parsed, editable
+  SIGNED // consultant signed with HPR ID → routed to pharmacy/lab
+  CANCELLED
+}
+
+enum PharmacyStatus {
+  QUEUED
+  PREPARING
+  READY
+  DISPENSED
+  CANCELLED
+}
+
+enum LabStatus {
+  ORDERED
+  SAMPLE_COLLECTED
+  PROCESSING
+  REPORTED
+  CANCELLED
+}
+
+enum LabUrgency {
+  ROUTINE
+  URGENT
+}
+
+enum MessageKind {
+  APPOINTMENT_TOKEN
+  RX_DOCUMENT
+  FOLLOW_UP
+}
+
+enum MessageProvider {
+  META
+  TWILIO
+  DRY_RUN
+}
+
+enum MessageStatus {
+  SENT
+  FAILED
+  SIMULATED // no provider credentials configured: payload built and logged, not sent
+  SKIPPED_NO_CONSENT
+}
+
+enum AuditAction {
+  READ
+  CREATE
+  UPDATE
+  DELETE
+  EXPORT // e.g. Rx PDF downloaded
+  SEND // e.g. WhatsApp message to a patient
+  SIGN // prescription signed
+  LOGIN // persona switch in the prototype
+  DENIED // RBAC refusal
+}
+
+// ─── Tenancy & people ─────────────────────────────────────────────────────────
+
+model Facility {
+  id        String       @id
+  name      String
+  type      FacilityType
+  city      String
+  /// URL slug for public pages: /book?f=lotus-ridge
+  slug      String       @unique
+  /// ABDM Health Facility Registry ID (sandbox value in the prototype)
+  hfrId     String?
+  phone     String?
+  createdAt DateTime     @default(now())
+
+  users           User[]
+  departments     Department[]
+  patients        Patient[]
+  admissions      Admission[]
+  handovers       Handover[]
+  sbarNotes       SbarNote[]
+  actionItems     ActionItem[]
+  appointments    Appointment[]
+  tokenCounters   TokenCounter[]
+  prescriptions   Prescription[]
+  pharmacyOrders  PharmacyOrder[]
+  labOrders       LabOrder[]
+  messages        MessageLog[]
+  auditLogs       AuditLog[]
+}
+
+model Department {
+  id         String @id
+  facilityId String
+  /// GENMED, GASTRO, PAEDS, DERM, ORTHO, ENT …
+  code       String
+  name       String
+  room       String
+
+  facility      Facility       @relation(fields: [facilityId], references: [id])
+  consultants   User[]
+  appointments  Appointment[]
+  tokenCounters TokenCounter[]
+
+  @@unique([facilityId, code])
+}
+
+model User {
+  id           String   @id
+  facilityId   String
+  name         String
+  email        String   @unique
+  role         Role
+  title        String?
+  /// Healthcare Professional Registry ID (ABDM). Required to sign prescriptions.
+  hprId        String?  @unique
+  departmentId String?
+  createdAt    DateTime @default(now())
+
+  facility         Facility       @relation(fields: [facilityId], references: [id])
+  department       Department?    @relation(fields: [departmentId], references: [id])
+  handovers        Handover[]
+  completedActions ActionItem[]   @relation("CompletedBy")
+  approvedNotes    SbarNote[]     @relation("ApprovedBy")
+  admissions       Admission[]    @relation("AdmittingConsultant")
+  appointments     Appointment[]  @relation("Consultant")
+  prescriptions    Prescription[]
+}
+
+model Patient {
+  id              String    @id @default(cuid())
+  facilityId      String
+  name            String
+  age             Int
+  gender          Gender    @default(UNKNOWN)
+  phone           String?
+  /// IPD bed, e.g. "ICU-2". Null for OPD-only patients.
+  bedNumber       String?
+  ward            String?
+  allergies       String[]
+  /// 14-digit ABHA number, formatted XX-XXXX-XXXX-XXXX
+  abhaNumber      String?
+  abhaAddress     String?
+  abhaLinkedAt    DateTime?
+  /// DPDP: explicit consent to process data for care, and separately for WhatsApp messages
+  careConsentAt   DateTime?
+  whatsappConsent Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  facility       Facility        @relation(fields: [facilityId], references: [id])
+  admissions     Admission[]
+  sbarNotes      SbarNote[]
+  actionItems    ActionItem[]
+  appointments   Appointment[]
+  prescriptions  Prescription[]
+  pharmacyOrders PharmacyOrder[]
+  labOrders      LabOrder[]
+  messages       MessageLog[]
+
+  @@unique([facilityId, bedNumber])
+  @@unique([facilityId, abhaNumber])
+  @@index([facilityId, phone])
+}
+
+/// Simulates the national ABHA registry for the M1 demo (ABDM sandbox is not called).
+model AbhaSandboxAccount {
+  abhaNumber  String   @id
+  abhaAddress String   @unique
+  mobile      String
+  name        String
+  gender      Gender
+  yearOfBirth Int
+  createdAt   DateTime @default(now())
+
+  @@index([mobile])
+}
+
+// ─── IPD (ward handovers) ─────────────────────────────────────────────────────
+
+model Admission {
+  id                    String    @id @default(cuid())
+  facilityId            String
+  patientId             String
+  diagnosis             String
+  admittedAt            DateTime  @default(now())
+  dischargedAt          DateTime?
+  admittingConsultantId String?
+
+  facility            Facility @relation(fields: [facilityId], references: [id])
+  patient             Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  admittingConsultant User?    @relation("AdmittingConsultant", fields: [admittingConsultantId], references: [id])
+
+  @@index([patientId, dischargedAt])
+}
+
+model Handover {
+  id           String   @id @default(cuid())
+  facilityId   String
+  authorId     String
+  source       Source
+  shift        Shift
+  rawDictation String   @db.Text
+  parserMeta   Json     @default("{}")
+  createdAt    DateTime @default(now())
+
+  facility    Facility     @relation(fields: [facilityId], references: [id])
+  author      User         @relation(fields: [authorId], references: [id])
+  sbarNotes   SbarNote[]
+  actionItems ActionItem[]
+
+  @@index([facilityId, createdAt])
+}
+
+model SbarNote {
+  id              String       @id @default(cuid())
+  facilityId      String
+  handoverId      String
+  patientId       String
+  sbar            Json
+  isCritical      Boolean      @default(false)
+  criticalReasons String[]
+  autoEscalated   Boolean      @default(false)
+  missingFields   String[]
+  corrections     Json         @default("[]")
+  uncertainties   String[]
+  proposal        Json         @default("{}")
+  status          ReviewStatus @default(DRAFT)
+  edited          Boolean      @default(false)
+  approvedById    String?
+  approvedAt      DateTime?
+  createdAt       DateTime     @default(now())
+
+  facility   Facility @relation(fields: [facilityId], references: [id])
+  handover   Handover @relation(fields: [handoverId], references: [id], onDelete: Cascade)
+  patient    Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  approvedBy User?    @relation("ApprovedBy", fields: [approvedById], references: [id])
+
+  @@unique([handoverId, patientId])
+  @@index([patientId, status, createdAt(sort: Desc)])
+}
+
+model ActionItem {
+  id            String       @id @default(cuid())
+  facilityId    String
+  handoverId    String
+  patientId     String
+  description   String
+  priority      Priority     @default(ROUTINE)
+  dueText       String?
+  status        ActionStatus @default(PENDING)
+  isCompleted   Boolean      @default(false)
+  completedAt   DateTime?
+  completedById String?
+  source        Source
+  shift         Shift
+  createdAt     DateTime     @default(now())
+
+  facility    Facility @relation(fields: [facilityId], references: [id])
+  handover    Handover @relation(fields: [handoverId], references: [id], onDelete: Cascade)
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  completedBy User?    @relation("CompletedBy", fields: [completedById], references: [id])
+
+  @@index([facilityId, isCompleted])
+  @@index([patientId, status])
+}
+
+// ─── OPD ──────────────────────────────────────────────────────────────────────
+
+model Appointment {
+  id             String            @id @default(cuid())
+  facilityId     String
+  patientId      String
+  departmentId   String
+  consultantId   String?
+  /// Calendar date in IST (stored as a DATE)
+  date           DateTime          @db.Date
+  tokenNumber    Int
+  /// Human token, e.g. "GAS-014"
+  tokenLabel     String
+  status         AppointmentStatus @default(BOOKED)
+  channel        BookingChannel
+  symptomsRaw    String?           @db.Text
+  symptomSummary String?
+  urgency        Urgency           @default(ROUTINE)
+  redFlags       String[]
+  preferredSlot  String?
+  checkedInAt    DateTime?
+  calledAt       DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime          @default(now())
+
+  facility     Facility      @relation(fields: [facilityId], references: [id])
+  patient      Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  department   Department    @relation(fields: [departmentId], references: [id])
+  consultant   User?         @relation("Consultant", fields: [consultantId], references: [id])
+  prescription Prescription?
+  labOrders    LabOrder[]
+
+  @@unique([facilityId, departmentId, date, tokenNumber])
+  @@index([facilityId, date, status])
+}
+
+/// Atomic per-department, per-day token sequence (INSERT … ON CONFLICT DO UPDATE).
+model TokenCounter {
+  facilityId   String
+  departmentId String
+  date         DateTime @db.Date
+  last         Int      @default(0)
+
+  facility   Facility   @relation(fields: [facilityId], references: [id])
+  department Department @relation(fields: [departmentId], references: [id])
+
+  @@id([facilityId, departmentId, date])
+}
+
+model Prescription {
+  id            String    @id @default(cuid())
+  facilityId    String
+  patientId     String
+  appointmentId String?   @unique
+  consultantId  String
+  status        RxStatus  @default(DRAFT)
+  rawDictation  String    @db.Text
+  advice        String[]
+  followUp      String?
+  /// [{ retracted, replacedWith, quote }]
+  corrections   Json      @default("[]")
+  uncertainties String[]
+  /// [{ level: "ALLERGY" | "REVIEW", itemIndex, message }]
+  warnings      Json      @default("[]")
+  /// Lab tests proposed in the draft; they become LabOrders only when the Rx is signed
+  draftLabTests Json      @default("[]")
+  /// Snapshot of the signer's HPR ID and a SHA-256 over the signed content (tamper-evident)
+  hprId         String?
+  signedAt      DateTime?
+  signatureHash String?
+  createdAt     DateTime  @default(now())
+
+  facility      Facility           @relation(fields: [facilityId], references: [id])
+  patient       Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  appointment   Appointment?       @relation(fields: [appointmentId], references: [id])
+  consultant    User               @relation(fields: [consultantId], references: [id])
+  items         PrescriptionItem[]
+  pharmacyOrder PharmacyOrder?
+  labOrders     LabOrder[]
+
+  @@index([facilityId, status, createdAt])
+}
+
+model PrescriptionItem {
+  id             String  @id @default(cuid())
+  prescriptionId String
+  position       Int
+  drug           String
+  /// TAB, CAP, SYP, INJ, OINT, DROPS, INH …
+  form           String?
+  strength       String?
+  /// Per-administration amount as dictated, e.g. "1 tab", "2 tsp"
+  dose           String?
+  /// As dictated/normalised: OD, BD, TID, QID, HS, SOS, 1-0-1 …
+  frequency      String?
+  timesPerDay    Float?
+  duration       String?
+  durationDays   Int?
+  route          String?
+  instructions   String?
+  /// Computed for countable forms (tabs/caps) when dose, frequency and duration are all known
+  quantity       Int?
+  needsReview    Boolean @default(false)
+  reviewReason   String?
+
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  @@index([prescriptionId, position])
+}
+
+model PharmacyOrder {
+  id             String         @id @default(cuid())
+  facilityId     String
+  patientId      String
+  prescriptionId String         @unique
+  status         PharmacyStatus @default(QUEUED)
+  updatedById    String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  facility     Facility     @relation(fields: [facilityId], references: [id])
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  @@index([facilityId, status])
+}
+
+model LabOrder {
+  id             String     @id @default(cuid())
+  facilityId     String
+  patientId      String
+  prescriptionId String?
+  appointmentId  String?
+  test           String
+  urgency        LabUrgency @default(ROUTINE)
+  status         LabStatus  @default(ORDERED)
+  notes          String?
+  orderedById    String
+  updatedById    String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  facility     Facility      @relation(fields: [facilityId], references: [id])
+  patient      Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  prescription Prescription? @relation(fields: [prescriptionId], references: [id])
+  appointment  Appointment?  @relation(fields: [appointmentId], references: [id])
+
+  @@index([facilityId, status])
+}
+
+// ─── Communications & compliance ──────────────────────────────────────────────
+
+/// WhatsApp outbox: every message built, whether sent, simulated or skipped.
+model MessageLog {
+  id                String          @id @default(cuid())
+  facilityId        String
+  patientId         String?
+  kind              MessageKind
+  provider          MessageProvider
+  /// E.164, e.g. +919812345678
+  to                String
+  /// The exact request body built for the provider (secrets never stored)
+  payload           Json
+  status            MessageStatus
+  providerMessageId String?
+  error             String?
+  createdAt         DateTime        @default(now())
+
+  facility Facility @relation(fields: [facilityId], references: [id])
+  patient  Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+
+  @@index([facilityId, createdAt])
+}
+
+/// DPDP Act 2023: who touched which patient's data, when, why, and how.
+model AuditLog {
+  id         String      @id @default(cuid())
+  facilityId String?
+  actorId    String?
+  /// Role at the time, or "PUBLIC" for the patient booking page / waiting-room TV
+  actorRole  String
+  action     AuditAction
+  /// Prisma model name, or a logical entity like "WhatsApp"
+  entity     String
+  entityId   String?
+  patientIds String[]
+  /// Purpose of processing, e.g. "OPD consultation", "Front desk registration"
+  purpose    String?
+  route      String?
+  meta       Json        @default("{}")
+  at         DateTime    @default(now())
+
+  facility Facility? @relation(fields: [facilityId], references: [id])
+
+  @@index([facilityId, at(sort: Desc)])
+  @@index([patientIds], type: Gin)
+  @@index([actorId, at(sort: Desc)])
+}

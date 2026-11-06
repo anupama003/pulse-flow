@@ -1,0 +1,21 @@
+# Local Postgres for Pulse Flow: `npm run db:up`
+name: pulse-flow
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pulse-flow-pg
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pulse_flow
+    ports:
+      - "5432:5432"
+    volumes:
+      - pulse-flow-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      retries: 30
+
+volumes:
+  pulse-flow-pg:
