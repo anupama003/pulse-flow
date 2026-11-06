@@ -11,6 +11,8 @@ import { base } from "../lib/db";
 import { ForbiddenError } from "../lib/staff";
 import { UserError } from "../lib/result";
 import { runWardChecks } from "../lib/ward/nudges";
+import { wardFollowups } from "../lib/ward/followups";
+import { runWithCtx } from "../lib/context";
 
 const MARK = "SMOKE-AGENT";
 const HOSPITAL = { facilityId: "f-hospital", agentName: "smoke-test" };
@@ -154,18 +156,24 @@ async function main() {
     await base.actionItem.update({ where: { id: abgTaskId }, data: { status: "PENDING", isCompleted: false, completedAt: null, completedById: null } }); // put the demo back
   });
 
-  await test("coordinator: a check finds late tasks, posts one nudge addressed to the coordinator, and counts repeat nudges", async () => {
+  await test("coordinator: a check posts one short line; answering it, the agent sees the PG not yet reminded, then reminded once", async () => {
     const later = new Date(Date.now() + 2 * 24 * 60 * 60_000); // every timed task in the seed is late by then
+    const facility = await base.facility.findUniqueOrThrow({ where: { slug: "lotus-ridge" } });
+    const answering = () =>
+      runWithCtx({ facilityId: facility.id, actorId: null, actorRole: "SYSTEM", purpose: "test", route: "test" }, () => wardFollowups(later, { answeringCheck: true }));
+    const counts = (f: Awaited<ReturnType<typeof wardFollowups>>) => [...f.overdueTasks.map((t) => t.nudgedBefore), ...f.staleDrafts.map((d) => d.nudgedBefore)];
+
     const [first] = await runWardChecks({ brief: true, now: later });
     assert.equal(first.facility, "Lotus Ridge Hospital");
     assert.ok(first.nudge && first.nudge.items > 0);
     assert.equal(first.nudge.status, "SIMULATED");
     assert.equal(first.brief, "SIMULATED");
-    await runWardChecks({ brief: false, now: later });
     const last = await base.auditLog.findFirst({ where: { entity: "Switch", meta: { path: ["event"], equals: "WARD_NUDGE" } }, orderBy: { at: "desc" } });
-    const text = String((last?.meta as { text?: string }).text);
-    assert.match(text, /^@lotus-ward-coordinator follow-up check\. PG on duty: Dr\. /);
-    assert.match(text, /nudged \d+× already/);
+    assert.match(String((last?.meta as { text?: string }).text), /^@lotus-ward-coordinator \d{2}:\d{2} check: \d+ late tasks?/);
+    assert.deepEqual(new Set(counts(await answering())), new Set([0]), "the check that woke the agent isn't a reminder yet");
+
+    await runWardChecks({ brief: false, now: later });
+    assert.deepEqual(new Set(counts(await answering())), new Set([1]), "one earlier check → reminded once → escalate");
     const brief = await base.auditLog.findFirst({ where: { entity: "Switch", meta: { path: ["event"], equals: "WARD_BRIEF" } }, orderBy: { at: "desc" } });
     assert.match(String((brief?.meta as { text?: string }).text), /^☀️ Ward brief, Lotus Ridge Hospital: 5 patients/);
   });

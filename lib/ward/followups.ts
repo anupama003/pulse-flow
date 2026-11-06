@@ -119,18 +119,23 @@ const isDayShift = (now: Date) => {
 const NUDGE_LOOKBACK_MS = 7 * 24 * 60 * MINUTE;
 
 /** How many earlier nudges already named each task/note, so the coordinator knows when to escalate. */
-async function priorNudges(facilityId: string): Promise<Map<string, number>> {
+/**
+ * How often Pulse Flow already listed each item in a check. When the coordinator answers a check,
+ * that check is already logged; it isn't an earlier reminder, so `skipLatest` leaves it out.
+ */
+async function priorNudges(facilityId: string, skipLatest: boolean): Promise<Map<string, number>> {
   const rows = await base.auditLog.findMany({
     where: { facilityId, entity: "Switch", at: { gte: new Date(Date.now() - NUDGE_LOOKBACK_MS) }, meta: { path: ["event"], equals: "WARD_NUDGE" } },
     select: { meta: true },
+    orderBy: { at: "desc" },
   });
   const counts = new Map<string, number>();
-  for (const r of rows) for (const id of ((r.meta as { itemIds?: string[] }).itemIds ?? [])) counts.set(id, (counts.get(id) ?? 0) + 1);
+  for (const r of skipLatest ? rows.slice(1) : rows) for (const id of ((r.meta as { itemIds?: string[] }).itemIds ?? [])) counts.set(id, (counts.get(id) ?? 0) + 1);
   return counts;
 }
 
 /** Runs inside a request context (staff or SYSTEM): tenant-scoped and audit-logged like every read. */
-export async function wardFollowups(now = new Date()): Promise<WardFollowups> {
+export async function wardFollowups(now = new Date(), opts: { answeringCheck?: boolean } = {}): Promise<WardFollowups> {
   const { facilityId } = requireCtx();
   const [tasks, drafts, pgs, nudged] = await Promise.all([
     db.actionItem.findMany({
@@ -147,7 +152,7 @@ export async function wardFollowups(now = new Date()): Promise<WardFollowups> {
       orderBy: { createdAt: "asc" },
     }),
     base.user.findMany({ where: { facilityId, role: { in: ["PG_DAY", "PG_NIGHT"] } }, select: { name: true, role: true } }),
-    priorNudges(facilityId),
+    priorNudges(facilityId, opts.answeringCheck ?? false),
   ]);
   const consultantOf = (p: { admissions: { admittingConsultant: { name: string } | null }[] }) => p.admissions[0]?.admittingConsultant?.name ?? null;
 

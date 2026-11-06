@@ -185,7 +185,7 @@ const followups = tool({
   },
   perm: "ward:read",
   purpose: "Ward follow-up check",
-  run: async (_u, { at }) => wardFollowups(at ? mostRecentIst(at) : undefined),
+  run: async (_u, { at }) => (at ? wardFollowups(mostRecentIst(at), { answeringCheck: true }) : wardFollowups()),
 });
 
 // ─── OPD ──────────────────────────────────────────────────────────────────────
