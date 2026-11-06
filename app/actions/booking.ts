@@ -6,6 +6,7 @@ import { AbhaError, assertLinkable, createAbha, requestMobileOtp, verifyMobileOt
 import { audit } from "@/lib/db";
 import { createAppointment, listDepartments, setAppointmentStatus, type BookingConfirmation } from "@/lib/opd/booking";
 import { parseIntake, type Intake } from "@/lib/opd/intake";
+import { registerWalkIn as registerWalkInShared, type WalkInForm } from "@/lib/opd/walk-in";
 import { detectRedFlags } from "@/lib/opd/red-flags";
 import { rateLimit } from "@/lib/rate-limit";
 import { attempt, UserError } from "@/lib/result";
@@ -120,36 +121,15 @@ export async function parseWalkIn(text: string): Promise<ActionResult<Intake>> {
   );
 }
 
-const WalkInSchema = z.object({
-  name: z.string().trim().min(2).max(80),
-  age: z.coerce.number().int().min(0).max(120),
-  gender: z.enum(["MALE", "FEMALE", "OTHER"]),
-  phone: z.string().regex(/^[6-9]\d{9}$/).nullable(),
-  departmentId: z.string(),
-  symptomsRaw: z.string().max(2000),
-  symptomSummary: z.string().max(200),
-  urgency: z.enum(["ROUTINE", "SOON", "EMERGENCY"]),
-  redFlags: z.array(z.string()),
-  whatsappConsent: z.boolean(),
-});
-export type WalkInForm = z.infer<typeof WalkInSchema>;
+export type { WalkInForm } from "@/lib/opd/walk-in";
 
 export async function registerWalkIn(form: WalkInForm): Promise<ActionResult<BookingConfirmation & { whatsapp: string | null }>> {
   return attempt(() =>
     withStaff("booking:frontdesk", "Front desk registration", async () => {
-      const parsed = WalkInSchema.safeParse(form);
-      if (!parsed.success) throw new UserError(parsed.error.issues[0]?.message ?? "Check the form.");
-      const w = parsed.data;
-      const flags = [...new Set([...w.redFlags, ...detectRedFlags(w.symptomsRaw)])];
-      const conf = await createAppointment({
-        patient: { name: w.name, age: w.age, gender: w.gender, phone: w.phone, whatsappConsent: w.whatsappConsent },
-        departmentId: w.departmentId, date: istDay(), channel: "WALK_IN", status: "WAITING",
-        symptomsRaw: w.symptomsRaw, symptomSummary: w.symptomSummary, urgency: flags.length ? "EMERGENCY" : w.urgency, redFlags: flags,
-      });
-      const wa = await sendAppointmentToken(conf.appointmentId);
+      const res = await registerWalkInShared(form);
       revalidatePath("/front-desk");
       revalidatePath("/queue");
-      return { ...conf, whatsapp: wa?.status ?? null };
+      return res;
     }),
   );
 }

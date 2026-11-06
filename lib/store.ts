@@ -1,7 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { db } from "./db";
-import type { SessionUser } from "./session";
+import type { SessionUser } from "./staff";
 import { SBAR_KEYS, type SbarKey, type ValidatedDraft } from "./sbar/clinical-rules";
 import type { Correction, Sbar } from "./sbar/schema";
 import type { DashboardData, DraftEdits, DraftView, PatientView, Proposal, ProposedTask, Source, TaskView } from "./types";

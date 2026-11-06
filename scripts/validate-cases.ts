@@ -86,6 +86,12 @@ test("contradiction: spoken '70 over 40' with no 'BP' label is still caught", ()
   assert.deepEqual(criticalFindings("she's fine, pressure 70 over 40").map((f) => f.label), ["BP 70/40"]);
 });
 
+test("contradiction: Indian spoken form 'BP 80 by 50' is caught, even before a later 'recheck BP at 4'", () => {
+  const text = "Bed 21 Fatima Khan, she's stable, BP 80 by 50 at 2 AM, heart rate 104, recheck BP at 4 and repeat KFT at 8.";
+  assert.deepEqual(criticalFindings(text, 52).map((f) => f.label), ["BP 80/50"]);
+  assert.equal(readVitals("blood pressure 110 by 70").sbp, 110);
+});
+
 test("no false alarm: abnormal value that has since normalised", () => {
   assert.deepEqual(criticalFindings("K was 6.1 at 2 AM, repeat came back 4.8"), []);
   assert.deepEqual(criticalFindings("BP 84/50 on arrival, after fluids 112/70"), []);

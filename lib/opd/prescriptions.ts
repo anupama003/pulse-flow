@@ -3,11 +3,12 @@ import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { audit, db } from "../db";
 import { UserError } from "../result";
-import type { SessionUser } from "../session";
+import type { SessionUser } from "../staff";
 import type { Correction } from "../sbar/schema";
 import { istDay } from "../time";
 import type { RxExtraction } from "./rx";
 import { validateRx, type RxItem, type RxItemInput, type RxWarning } from "./rx-rules";
+import { buildRxSigned, postToRoom } from "@/server/services/Switch";
 
 // OPD consult lifecycle: call next → dictate Rx (DRAFT) → review/edit → sign with HPR ID →
 // route to pharmacy + diagnostics queues → appointment COMPLETED.
@@ -174,6 +175,12 @@ export async function signRx(user: SessionUser, rxId: string, input: SignInput) 
     if (rx.appointmentId) await tx.appointment.updateMany({ where: { id: rx.appointmentId, status: "IN_CONSULT" }, data: { status: "COMPLETED", completedAt: signedAt } });
   });
   await audit("SIGN", "Prescription", { entityId: rxId, patientIds: [rx.patientId], meta: { hprId: user.hprId, signatureHash, items: items.length, labTests: input.labTests.length } });
+  await postToRoom(
+    buildRxSigned({
+      token: rx.appointment?.tokenLabel ?? null, patientName: rx.patient.name, consultant: user.name, medicines: items.length,
+      labTests: input.labTests.map((t) => t.test), allergies: rx.patient.allergies, patientId: rx.patientId,
+    }),
+  );
   return { rxId, patientId: rx.patientId, pharmacy: items.length > 0, labs: input.labTests.length };
 }
 

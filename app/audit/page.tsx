@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { AuditAction, Prisma } from "@prisma/client";
 import AppShell, { AccessDenied } from "@/components/AppShell";
 import { audit, base, db } from "@/lib/db";
+import SwitchActivity from "@/components/SwitchActivity";
 import { staffPage } from "@/lib/page";
 import { istTime } from "@/lib/time";
 
@@ -23,7 +24,14 @@ const ACTIONS = Object.keys(ACTION_TINT) as AuditAction[];
 
 type Search = { action?: string; patient?: string; tab?: string };
 
-/** DPDP Act 2023 audit trail + WhatsApp outbox, scoped to the admin's facility. */
+const TABS = [
+  { key: "", label: "Access log" },
+  { key: "whatsapp", label: "WhatsApp outbox" },
+  { key: "switch", label: "Switch rooms" },
+] as const;
+const SWITCH_ACTIVITY_LIMIT = 100;
+
+/** DPDP Act 2023 audit trail + WhatsApp outbox + Switch room activity, scoped to the admin's facility. */
 export default async function AuditPage({ searchParams }: { searchParams: Promise<Search> }) {
   const sp = await searchParams;
   const page = await staffPage("audit:read", "Compliance audit review", async (u) => {
@@ -32,29 +40,40 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
       ...(sp.action && ACTIONS.includes(sp.action as AuditAction) ? { action: sp.action as AuditAction } : {}),
       ...(sp.patient ? { patientIds: { has: sp.patient } } : {}),
     };
-    const [logs, total, actors, patients, messages] = await Promise.all([
+    const [logs, total, actors, patients, messages, switchLogs] = await Promise.all([
       base.auditLog.findMany({ where, orderBy: { at: "desc" }, take: 200 }),
       base.auditLog.count({ where: { facilityId: u.facilityId } }),
       base.user.findMany({ where: { facilityId: u.facilityId }, select: { id: true, name: true } }),
       db.patient.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
       sp.tab === "whatsapp" ? db.messageLog.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { patient: { select: { name: true } } } }) : Promise.resolve([]),
+      sp.tab === "switch"
+        ? base.auditLog.findMany({
+            where: { facilityId: u.facilityId, OR: [{ entity: "Switch" }, { route: { startsWith: "switch:" } }] },
+            orderBy: { at: "desc" },
+            take: SWITCH_ACTIVITY_LIMIT,
+          })
+        : Promise.resolve([]),
     ]);
     await audit("READ", "AuditLog", { meta: { filters: sp } });
-    return { logs, total, actors: new Map(actors.map((a) => [a.id, a.name])), patients, names: new Map(patients.map((p) => [p.id, p.name])), messages };
+    return { logs, total, actors: new Map(actors.map((a) => [a.id, a.name])), patients, names: new Map(patients.map((p) => [p.id, p.name])), messages, switchLogs };
   });
   if (!page.ok) return <AccessDenied shell={page.shell} message={page.message} />;
-  const { logs, total, actors, patients, names, messages } = page.data;
+  const { logs, total, actors, patients, names, messages, switchLogs } = page.data;
+  const tab = TABS.find((t) => t.key === (sp.tab ?? ""))?.key ?? "";
   const q = (o: Search) => `/audit?${new URLSearchParams(Object.entries({ ...sp, ...o }).filter(([, v]) => v) as [string, string][])}`;
 
   return (
     <AppShell shell={page.shell} toolbar={<h1 className="px-2 text-3xl font-light tracking-tight md:text-4xl">Audit & compliance</h1>}>
       <div className="mb-5 flex flex-wrap items-center gap-2">
-        <Link href={q({ tab: "" })} className={`rounded-full px-4 py-2 text-sm ${sp.tab !== "whatsapp" ? "bg-ink text-white" : "bg-white text-slate-500 shadow-widget"}`}>Access log</Link>
-        <Link href={q({ tab: "whatsapp" })} className={`rounded-full px-4 py-2 text-sm ${sp.tab === "whatsapp" ? "bg-ink text-white" : "bg-white text-slate-500 shadow-widget"}`}>WhatsApp outbox</Link>
+        {TABS.map((t) => (
+          <Link key={t.key} href={q({ tab: t.key })} className={`rounded-full px-4 py-2 text-sm ${tab === t.key ? "bg-ink text-white" : "bg-white text-slate-500 shadow-widget"}`}>{t.label}</Link>
+        ))}
         <span className="ml-auto text-sm text-slate-400">{total.toLocaleString("en-IN")} events recorded for this facility</span>
       </div>
 
-      {sp.tab === "whatsapp" ? (
+      {tab === "switch" ? (
+        <SwitchActivity logs={switchLogs} actors={actors} names={names} />
+      ) : tab === "whatsapp" ? (
         <section className="rounded-[2rem] bg-white p-6 shadow-widget">
           <h2 className="text-xl font-medium">WhatsApp outbox</h2>
           <p className="mb-4 text-sm text-slate-400">Every message built for a patient: sent, simulated (no provider configured) or skipped for lack of consent.</p>

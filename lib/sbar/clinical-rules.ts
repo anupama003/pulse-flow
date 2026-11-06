@@ -47,9 +47,12 @@ function lastValue(text: string, label: string, num: string, gap = String.raw`\s
   return val;
 }
 
-/** Last blood pressure, whether written "BP 70/40", "pressure of 70 over 40" or just "70 over 40". */
+/**
+ * Last blood pressure, whether written "BP 70/40", "pressure of 70 over 40", "BP 70 by 40" (common in
+ * Indian dictation) or just "70 over 40". "by" only counts after a BP label, so "5 by 5" is never a BP.
+ */
 function lastBp(text: string): [number, number] | undefined {
-  const res = [/(?:\bbp\b|blood pressure|pressure)[^0-9]{0,20}(\d{2,3})\s*(?:\/|over)\s*(\d{2,3})/gi, /\b(\d{2,3})\s+over\s+(\d{2,3})\b/gi];
+  const res = [/(?:\bbp\b|blood pressure|pressure)[^0-9]{0,20}(\d{2,3})\s*(?:\/|over|by)\s*(\d{2,3})/gi, /\b(\d{2,3})\s+over\s+(\d{2,3})\b/gi];
   let best: { i: number; end: number; v: [number, number] } | undefined;
   for (const re of res)
     for (const m of text.matchAll(re)) {

@@ -10,17 +10,25 @@
     "db:up": "docker compose up -d --wait postgres",
     "db:down": "docker compose down",
     "db:push": "prisma db push",
-    "db:seed": "tsx --conditions=react-server prisma/seed.ts",
+    "db:seed": "tsx --env-file=.env --conditions=react-server prisma/seed.ts",
     "db:reset": "prisma db push --force-reset && npm run db:seed",
     "db:studio": "prisma studio",
     "test:rules": "tsx --conditions=react-server scripts/validate-cases.ts && tsx --conditions=react-server scripts/opd-cases.ts",
-    "test:db": "tsx --conditions=react-server scripts/db-smoke.ts",
-    "test": "npm run typecheck && npm run test:rules",
-    "setup": "npm install && npm run db:up && npm run db:push && npm run db:seed"
+    "test:db": "tsx --env-file=.env --conditions=react-server scripts/db-smoke.ts",
+    "test": "npm run typecheck && npm run test:rules && npm run test:switch",
+    "setup": "node scripts/setup.mjs",
+    "switch:setup": "tsx switch/setup.ts",
+    "switch:register": "tsx --env-file=.env switch/register.ts",
+    "switch:mcp": "tsx --env-file=.env --conditions=react-server switch/mcp/server.ts",
+    "test:agents": "tsx --env-file=.env --conditions=react-server scripts/agent-smoke.ts",
+    "test:switch": "tsx --conditions=react-server scripts/switch-cases.ts",
+    "switch:nudge": "tsx --env-file=.env --conditions=react-server switch/nudge.ts",
+    "switch:templates": "tsx switch/telegram-template.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
     "@google/genai": "^2.32.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@prisma/client": "^6.19.3",
     "framer-motion": "^14.7.1",
     "lucide-react": "^1.63.0",
@@ -41,5 +49,8 @@
     "tsx": "^4.23.15",
     "typescript": "^5.9.3"
   },
-  "description": "Pulse Flow: voice-first hospital & clinic platform (IPD handovers, OPD booking, e-Rx, pharmacy, lab, WhatsApp)"
+  "description": "Pulse Flow: voice-first hospital & clinic platform (IPD handovers, OPD booking, e-Rx, pharmacy, lab, WhatsApp)",
+  "engines": {
+    "node": ">=20.11"
+  }
 }

@@ -1,6 +1,6 @@
 import "server-only";
 import { ExtractionError } from "./llm";
-import { ForbiddenError } from "./session";
+import { ForbiddenError } from "./staff";
 import { StoreError } from "./store";
 import type { ActionResult } from "./types";
 
