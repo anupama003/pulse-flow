@@ -1,6 +1,6 @@
 import "server-only";
 import { audit } from "@/lib/db";
-import type { WardFollowups } from "@/lib/ward/followups";
+import { istHhmm, type WardFollowups } from "@/lib/ward/followups";
 
 // Switch: posts Pulse Flow's clinical events into the hospital's team-chat rooms, where staff and
 // the Pulse Flow agents (switch/pulse-flow-hospital.template.yaml) pick them up. This replaces the
@@ -125,33 +125,25 @@ export function buildEmergencyWalkIn(p: {
 }
 
 /**
- * Wakes the ward coordinator agent: its name leads the message (how Switch addresses an agent in
- * Telegram and the other bridges), followed by everything it needs to chase people by name.
+ * Wakes the ward coordinator agent with one short line people in the room can read: the tag
+ * (how Switch wakes an agent), the check time and the counts. The coordinator fetches the
+ * details with its ward_followups tool for that time, so ids and repeat counts never reach chat.
  * Null when there is nothing to chase, so quiet wards get no noise.
  */
-const LONG_WAIT_MIN = 90;
-/** "20 min" under an hour and a half, "3 h" beyond it. */
-const duration = (min: number) => (min < LONG_WAIT_MIN ? `${min} min` : `${Math.round(min / 60)} h`);
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 export function buildWardNudge(f: WardFollowups, coordinator: string): RoomMessage | null {
   if (!f.overdueTasks.length && !f.staleDrafts.length) return null;
-  const again = (n: number) => (n ? ` · nudged ${n}× already` : "");
-  const tasks = f.overdueTasks.map(
-    (t) => `- [task ${t.taskId}] Bed ${t.bed} ${t.patient} · ${t.priority} ${t.task}${t.dueText ? ` (due ${t.dueText})` : ""} · ${duration(t.minutesLate)} late${t.consultant ? ` · consultant ${t.consultant}` : ""}${again(t.nudgedBefore)}`,
-  );
-  const drafts = f.staleDrafts.map(
-    (d) => `- [note ${d.noteId}] Bed ${d.bed} ${d.patient} · ${d.critical ? "🔴 critical " : ""}${d.source === "ROUNDS" ? "rounds" : "handover"} draft by ${d.author} · waiting ${duration(d.minutesWaiting)} for ${d.needs}${d.consultant ? ` (${d.consultant})` : ""}${again(d.nudgedBefore)}`,
-  );
+  const counts = [
+    f.overdueTasks.length ? `${plural(f.overdueTasks.length, "late task")}` : "",
+    f.staleDrafts.length ? `${plural(f.staleDrafts.length, "note")} waiting for approval` : "",
+  ].filter(Boolean);
   return {
     event: "WARD_NUDGE",
     room: "ward",
     patientIds: [...new Set([...f.overdueTasks.map((t) => t.patientId), ...f.staleDrafts.map((d) => d.patientId)])],
     itemIds: [...f.overdueTasks.map((t) => t.taskId), ...f.staleDrafts.map((d) => d.noteId)],
-    text: [
-      `@${coordinator} follow-up check. PG on duty: ${f.pgOnDuty ?? "unknown"}.`,
-      ...(tasks.length ? ["⏰ Late tasks:", ...tasks] : []),
-      ...(drafts.length ? ["📝 Waiting for approval:", ...drafts] : []),
-    ].join("\n"),
+    text: `@${coordinator} ${istHhmm(new Date(f.checkedAt))} check: ${counts.join(", ")}.`,
   };
 }
 

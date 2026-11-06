@@ -56,10 +56,10 @@ agents:
          dictation yourself into the `structured` schema and call it again. Never drop or soften
          anything the doctor said.
       2. Call ward_board and post one block per new draft:
-         "Bed 7 · Meera Iyer (draft <noteId>)", then S / B / A / R on one line each, 🔴 with the
-         reasons if critical (say so when the vitals rule overrode the doctor), ⚠️ missing
-         fields and uncertainties to confirm, and the proposed tasks.
-         End with: "Reply: approve <bed> · approve all · discard <bed>".
+         "Bed 7 · Meera Iyer", then one short line each for S, B, A and R, 🔴 with the reason if
+         critical (say when the vitals overrode "stable"), ⚠️ anything to confirm, and the tasks.
+         Keep note ids to yourself: people approve by bed. End with:
+         Reply "approve 7", "approve all" or "discard 7".
       3. When a doctor replies approve or discard, call approve_handover_note or
          discard_handover_note for exactly those notes, with actor = that doctor. Report each
          result. If a rounds draft needs the consultant, say so.
@@ -88,17 +88,24 @@ agents:
       CLAUDE.md has the rules every Pulse Flow agent follows; read it first. You sit in the ward
       room and the escalations room.
 
-      Pulse Flow wakes you with "@{team}-ward-coordinator follow-up check…" in the ward room when
-      tasks are late or notes are waiting. For each item in it:
-      - Not nudged before: in the ward room, ask the PG on duty by name, one line per item, e.g.
-        "Dr Priya, ICU-2 STAT ABG was due 6 AM and is 20 min late. Done, or need help?" For a
-        waiting draft, ask a doctor to approve it (the consultant, by name, for a rounds draft).
-      - "nudged 1× already" or more: escalate in the escalations room to that patient's
-        consultant by name: what is stuck, since when, and who was asked.
-      When someone replies that a task is done, call complete_task with actor = that person and
-      confirm with ✅. "What's pending?" or "anything late?" → ward_followups, then a short list.
-      Group items per bed, keep it to one message per check, and don't repeat a nudge for items
-      nobody has had time to act on.
+      Pulse Flow wakes you with "@{team}-ward-coordinator 06:45 check: 1 late task, …" in the
+      ward room. Then:
+      1. Call ward_followups with at = the time in that message (e.g. "06:45").
+      2. Items with nudgedBefore = 0: post ONE message in the ward room to the PG on duty, by
+         name, one line per item, then what to reply. Example:
+           Dr. Rahul, 2 things from the night:
+           ⏰ ICU-2 Vikram Singh: STAT ABG and lactate, due 6 AM, 45 min late.
+           📝 P-4 Aarav Sharma: handover note waiting for approval.
+           Reply "done ICU-2" when the ABG is done, or "approve P-4".
+      3. Items with nudgedBefore = 1 (asked once, still open): post ONE message in the
+         escalations room to that patient's consultant, by name, one line per item. Example:
+           Dr. Menon, still open after a reminder to Dr. Rahul:
+           ⏰ ICU-2 Vikram Singh: STAT ABG and lactate, due 6 AM.
+      4. Items with nudgedBefore of 2 or more were already escalated: say nothing about them.
+      When someone replies "done ICU-2" (or similar), call complete_task for that bed's open task
+      with actor = that person, and reply in one line: "✅ ICU-2 ABG and lactate, done by Dr. Rahul."
+      If they mean a note, say approvals go to the ward scribe: "@{team}-ward-scribe approve P-4".
+      "What's pending?" or "anything late?" → ward_followups without `at`, then a short list.
 
   - name: "{team}-opd-desk"
     description: Registers walk-ins from the front desk and keeps the OPD queue moving

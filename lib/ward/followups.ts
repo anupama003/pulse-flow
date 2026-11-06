@@ -81,6 +81,20 @@ export interface StaleDraft {
   nudgedBefore: number;
 }
 
+const DAY_MS = 24 * 60 * MINUTE;
+
+/** "06:45": a time on the IST clock, as the ward says it. */
+export function istHhmm(d: Date): string {
+  return new Date(d.getTime() + IST_OFFSET_MS).toISOString().slice(11, 16);
+}
+
+/** The last time the IST clock showed HH:MM, at or before now. Used to replay a check ("--at 06:45"). */
+export function mostRecentIst(hhmm: string, now = new Date()): Date {
+  const at = /^\d{1,2}:\d{2}$/.test(hhmm) ? parseDue(hhmm, new Date(now.getTime() - DAY_MS)) : null;
+  if (!at || at.getTime() > now.getTime()) throw new Error(`Expected a 24-hour IST time like 06:45 (got "${hhmm}").`);
+  return at;
+}
+
 export interface WardFollowups {
   checkedAt: string;
   pgOnDuty: string | null;

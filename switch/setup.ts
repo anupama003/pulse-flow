@@ -3,14 +3,20 @@
 //
 //   switch/agents/<agent>/.mcp.json             the pulse-flow MCP server (absolute paths, this machine)
 //   switch/agents/<agent>/.claude/settings.json pre-approves that server and its tools
-//   switch/agents/<agent>/CLAUDE.md             switch/agent-rules.md
+//   switch/agents/<agent>/CLAUDE.md             switch/agent-rules.md + that agent's role from the template
+//
+// The role steps live in CLAUDE.md too, which the agent reads at the start of every session: an
+// agent created from an older template picks up changes after `npm run switch:setup`, without
+// recreating it in Switch Console.
 //
 // The folders are generated (machine-specific paths) and git-ignored. Re-run after moving the repo.
-import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { roleInstructions } from "./role-instructions";
 import { AGENT_TOOLSETS } from "./toolsets";
 
 const repo = resolve(import.meta.dirname, "..");
+const team = process.env.PULSE_FLOW_TEAM?.trim() || "lotus";
 const facility = process.env.PULSE_FLOW_FACILITY?.trim() || "lotus-ridge";
 const tsx = join(repo, "node_modules", ".bin", "tsx");
 
@@ -22,6 +28,9 @@ if (!existsSync(join(repo, ".env"))) {
   console.error("✗ No .env yet. Run `npm run setup` first (it creates one).");
   process.exit(1);
 }
+
+const template = readFileSync(join(repo, "switch", "pulse-flow-hospital.template.yaml"), "utf8");
+const rules = readFileSync(join(repo, "switch", "agent-rules.md"), "utf8");
 
 for (const [agent, tools] of Object.entries(AGENT_TOOLSETS)) {
   const dir = join(repo, "switch", "agents", agent);
@@ -41,7 +50,7 @@ for (const [agent, tools] of Object.entries(AGENT_TOOLSETS)) {
     join(dir, ".claude", "settings.json"),
     `${JSON.stringify({ enableAllProjectMcpServers: true, permissions: { allow: tools.map((t) => `mcp__pulse-flow__${t}`) } }, null, 2)}\n`,
   );
-  copyFileSync(join(repo, "switch", "agent-rules.md"), join(dir, "CLAUDE.md"));
+  writeFileSync(join(dir, "CLAUDE.md"), `${rules.trimEnd()}\n\n## Your role: ${team}-${agent}\n\n${roleInstructions(template, agent, team)}\n`);
   console.log(`✓ ${agent}: ${tools.length} tools → ${dir}`);
 }
 

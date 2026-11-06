@@ -8,7 +8,7 @@ import { UserError } from "../result";
 import { HandoverExtractionSchema, RoundsExtractionSchema } from "../sbar/schema";
 import { runAsStaff, type SessionUser } from "../staff";
 import { approveDraft, discardDraft, getCarePlan, getCensus, getDashboard, setTaskCompleted } from "../store";
-import { wardFollowups } from "../ward/followups";
+import { mostRecentIst, wardFollowups } from "../ward/followups";
 import { draftHandover, matchPatient } from "../ward/handover";
 import { draftRounds } from "../ward/rounds";
 import { resolveActor } from "./actor";
@@ -178,11 +178,14 @@ const submitRounds = tool({
 
 const followups = tool({
   name: "ward_followups",
-  description: "What needs chasing right now: tasks past their stated time (or STAT not done in 30 min) and drafts waiting for approval, with the PG on duty, each patient's consultant and how often each was already nudged.",
-  input: { actor },
+  description: "What needs chasing: tasks past their stated time (or STAT not done in 30 min) and drafts waiting for approval, with the PG on duty, each patient's consultant and how often each was already nudged. Pass `at` when Pulse Flow's check message names a time (\"06:45 check: …\").",
+  input: {
+    actor,
+    at: z.string().regex(/^\d{1,2}:\d{2}$/).optional().describe("IST time of the check from Pulse Flow's message, e.g. 06:45. Omit for now."),
+  },
   perm: "ward:read",
   purpose: "Ward follow-up check",
-  run: async () => wardFollowups(),
+  run: async (_u, { at }) => wardFollowups(at ? mostRecentIst(at) : undefined),
 });
 
 // ─── OPD ──────────────────────────────────────────────────────────────────────

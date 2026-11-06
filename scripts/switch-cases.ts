@@ -4,9 +4,10 @@ import { readFileSync } from "node:fs";
 import { chatHandleMap, matchStaff } from "../lib/agents/actor";
 import { AGENT_TOOLS } from "../lib/agents/tools";
 import { buildCriticalAlert, buildEmergencyWalkIn, buildRxSigned, switchConfig, toSwitchRequest, type SwitchConfig } from "../server/services/Switch";
-import { lateBy, parseDue, type WardFollowups } from "../lib/ward/followups";
+import { lateBy, mostRecentIst, parseDue, type WardFollowups } from "../lib/ward/followups";
 import { buildWardBrief, buildWardNudge } from "../server/services/Switch";
 import { registrationBody } from "../switch/register";
+import { roleInstructions } from "../switch/role-instructions";
 import { buildTelegramTemplate, TELEGRAM_JOINS } from "../switch/telegram-template";
 import { AGENT_TOOLSETS } from "../switch/toolsets";
 
@@ -149,30 +150,33 @@ test("late: 15 min grace after the stated time; STAT with no time is late after 
 });
 
 const followups = (o: Partial<WardFollowups> = {}): WardFollowups => ({ checkedAt: "", pgOnDuty: "Dr. Priya Raghavan", overdueTasks: [], staleDrafts: [], ...o });
-test("nudge: long waits read in hours, short ones in minutes", () => {
-  const m = buildWardNudge(
-    followups({ overdueTasks: [{ taskId: "t9", patientId: "p", bed: "7", patient: "M", task: "KFT", priority: "HIGH", dueText: "8 AM", minutesLate: 185, consultant: null, nudgedBefore: 0 }] }),
-    "c",
-  )!;
-  assert.match(m.text, /· 3 h late/);
-});
 test("nudge: nothing late → no message at all (quiet wards get no noise)", () => {
   assert.equal(buildWardNudge(followups(), "lotus-ward-coordinator"), null);
 });
-test("nudge: addressed to the coordinator by name, with ids, PG on duty, consultant and repeat count", () => {
+test("nudge: one short line people can read, tagging the coordinator with the check time; details stay out of chat", () => {
   const m = buildWardNudge(
     followups({
+      checkedAt: ist("06:45").toISOString(),
       overdueTasks: [{ taskId: "t1", patientId: "p-a", bed: "ICU-2", patient: "Vikram Singh", task: "Repeat ABG", priority: "STAT", dueText: "6 AM", minutesLate: 20, consultant: "Dr. Suresh Menon", nudgedBefore: 1 }],
       staleDrafts: [{ noteId: "n1", patientId: "p-e", bed: "21", patient: "Fatima Khan", critical: true, source: "ROUNDS", author: "Dr. Suresh Menon", minutesWaiting: 45, needs: "the consultant", consultant: "Dr. Suresh Menon", nudgedBefore: 0 }],
     }),
     "lotus-ward-coordinator",
   )!;
   assert.equal(m.room, "ward");
-  assert.ok(m.text.startsWith("@lotus-ward-coordinator follow-up check. PG on duty: Dr. Priya Raghavan."));
-  assert.match(m.text, /\[task t1\] Bed ICU-2 Vikram Singh · STAT Repeat ABG \(due 6 AM\) · 20 min late · consultant Dr\. Suresh Menon · nudged 1× already/);
-  assert.match(m.text, /\[note n1\] Bed 21 Fatima Khan · 🔴 critical rounds draft by Dr\. Suresh Menon · waiting 45 min for the consultant/);
+  assert.equal(m.text, "@lotus-ward-coordinator 06:45 check: 1 late task, 1 note waiting for approval.");
   assert.deepEqual(m.itemIds, ["t1", "n1"]);
   assert.deepEqual(m.patientIds, ["p-a", "p-e"]);
+});
+test("nudge: counts read naturally (plural, and only what there is)", () => {
+  const task: WardFollowups["overdueTasks"][number] = { taskId: "t", patientId: "p", bed: "7", patient: "M", task: "KFT", priority: "HIGH", dueText: "8 AM", minutesLate: 185, consultant: null, nudgedBefore: 0 };
+  const m = buildWardNudge(followups({ checkedAt: ist("08:30").toISOString(), overdueTasks: [task, { ...task, taskId: "u" }] }), "c")!;
+  assert.equal(m.text, "@c 08:30 check: 2 late tasks.");
+});
+test("check time: '06:45' means the most recent 06:45 IST; junk is refused", () => {
+  const at = mostRecentIst("06:45");
+  assert.ok(at.getTime() <= Date.now() && Date.now() - at.getTime() < 24 * 3600_000);
+  assert.equal(new Date(at.getTime() + 5.5 * 3600_000).toISOString().slice(11, 16), "06:45");
+  assert.throws(() => mostRecentIst("quarter to 7"));
 });
 test("brief: critical beds first, then by bed number, with counts in the headline", () => {
   const p = (bed: string, critical: boolean) => ({ bed, name: `P${bed}`, diagnosis: null, critical, criticalReasons: critical ? ["BP 80/50"] : [], openTasks: 1, draftWaiting: false, patientId: bed });
@@ -201,6 +205,16 @@ test("Telegram template: no bridge, no rooms created, every agent joins the same
       .sort();
     assert.deepEqual(rooms.map((r) => roomOf[r]).sort(), inMain, agent);
   }
+});
+
+test("every agent's CLAUDE.md gets its role steps from the template, with the team filled in", () => {
+  const template = readFileSync(new URL("../switch/pulse-flow-hospital.template.yaml", import.meta.url), "utf8");
+  for (const agent of Object.keys(AGENT_TOOLSETS)) {
+    const role = roleInstructions(template, agent, "lotus");
+    assert.ok(role.startsWith("You are the"), agent);
+    assert.ok(!role.includes("{team}") && !role.includes("instructions: |"), agent);
+  }
+  assert.match(roleInstructions(template, "ward-coordinator", "lotus"), /Call ward_followups with at = the time/);
 });
 
 console.log(`\n${passed} Switch tests passed`);

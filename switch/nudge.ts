@@ -7,27 +7,18 @@
 //                                        hospital's data is "last night", so this replays that morning)
 //
 // Without Switch configured, the messages are simulated and shown in Audit → Switch rooms.
-import { parseDue } from "../lib/ward/followups";
+import { mostRecentIst } from "../lib/ward/followups";
 import { runWardChecks, type WardCheckResult } from "../lib/ward/nudges";
 
 const CHECK_EVERY_MS = 15 * 60_000;
 const BRIEF_HOUR_IST = 8;
 const IST_OFFSET_MS = 330 * 60_000;
-const DAY_MS = 24 * 60 * 60_000;
 
 const argv = process.argv.slice(2);
 const args = new Set(argv);
 const atIndex = argv.indexOf("--at");
 const istNow = () => new Date(Date.now() + IST_OFFSET_MS);
 const istDate = () => istNow().toISOString().slice(0, 10);
-
-/** The last time the IST clock showed HH:MM, at or before now. */
-function mostRecentIst(hhmm: string): Date {
-  if (!/^\d{1,2}:\d{2}$/.test(hhmm)) throw new Error(`--at needs a 24-hour time like 06:45 (got "${hhmm}").`);
-  const at = parseDue(hhmm, new Date(Date.now() - DAY_MS));
-  if (!at) throw new Error(`--at needs a 24-hour time like 06:45 (got "${hhmm}").`);
-  return at;
-}
 
 function report(results: WardCheckResult[]) {
   for (const r of results) {

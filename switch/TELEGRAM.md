@@ -88,7 +88,7 @@ Switch Console → **Templates** → **Import** → `switch/pulse-flow-telegram.
 
 Check in any group: send `!list-agents`. You should see the Pulse Flow agents for that group.
 
-In Telegram there's one bot for all agents: **you talk to an agent by starting your message with its name**, e.g. `lotus-ward-scribe` followed by your handover. Replies arrive from the bot, prefixed with the agent's name.
+In Telegram there's one bot for all agents: **you talk to an agent by starting your message with @ and its name**, e.g. `@lotus-ward-scribe` followed by your handover. Replies arrive from the bot, prefixed with the agent's name.
 
 ## 7. Host: point Pulse Flow at the rooms, map the cast
 
@@ -112,34 +112,64 @@ To let member 3 play the pharmacist for one scene, change `anjali_pf_demo=u-anja
 
 Restart `npm run dev`. Open **Audit → Switch rooms** as Deepak (admin) to watch every post and agent action.
 
-## 8. Run the demo
+## 8. Run the demo: who types what
+
+**The one rule in chat:** to talk to an agent, start the message with `@` and its name. Everything else is ordinary chat between people, and agents ignore it.
+
+| Who's who | |
+|---|---|
+| **Pulse Flow** (`pulse-flow-events`) | The hospital system. It posts alerts and, for the coordinator, a one-line "06:45 check" that wakes it. Nobody replies to it. |
+| **Ward scribe** (`@lotus-ward-scribe`) | Turns a dictated handover or rounds note into drafts; files approvals. |
+| **Ward coordinator** (`@lotus-ward-coordinator`) | Chases late tasks: asks the PG first, tells the consultant if it's still open next time. |
+| **OPD desk** (`@lotus-opd-desk`) | Registers walk-ins. |
+| **Fulfilment** (`@lotus-fulfilment`) | Moves pharmacy and lab orders. |
+
+Before each take (don't run `--watch` while recording: it would post real-time checks in the middle):
 
 ```bash
-npm run db:reset                          # fresh demo hospital before each take
+npm run db:reset
 npm run dev
-npm run switch:nudge -- --watch           # the coordinator's alarm clock (every 15 min, 8 AM brief)
 ```
 
-1. **Lotus Ward, Rahul** (hold Wispr Flow, or paste):
-   > lotus-ward-scribe Bed 21 Fatima Khan, pyelonephritis with AKI on IV ceftriaxone, she's stable, BP 80 by 50 at 2 AM, heart rate 104, recheck BP at 4 and repeat KFT at 8. Bed 7 Meera Iyer, DKA resolved, sugars 140 to 180 on basal-bolus, eating well, discharge after consultant review.
+**Scene 1: night handover** (Lotus Ward)
+- **Rahul types** (hold Wispr Flow, or paste):
+  > @lotus-ward-scribe Bed 21 Fatima Khan, pyelonephritis with AKI on IV ceftriaxone, she's stable, BP 80 by 50 at 2 AM, heart rate 104, recheck BP at 4 and repeat KFT at 8. Bed 7 Meera Iyer, DKA resolved, sugars 140 to 180 on basal-bolus, eating well, discharge after consultant review.
+- **Scribe replies:** two short drafts, bed 21 marked 🔴 (the BP overrode "stable"), ending with `Reply "approve 21", "approve all" or "discard 21".`
+- **Lotus Escalations** gets one 🔴 line from Pulse Flow about bed 21.
 
-   Two SBAR drafts appear; bed 21 is 🔴 because the vitals rule overrode "stable". **Lotus Escalations** gets the alert at the same time.
-2. **Lotus Ward, Anjali**: `lotus-ward-scribe approve all` → refused: front desk can't approve clinical notes.
-3. **Lotus Ward, you**: `lotus-ward-scribe approve all` → live on the ward screen, under your name.
-4. **Coordinator:** run `npm run switch:nudge -- --at 06:45` (a follow-up check as if it were 6:45 this morning, when the demo hospital's night shift was ending). In Lotus Ward the coordinator asks **Dr. Rahul** by name: ICU-2's STAT ABG was due at 6 and is 45 min late, and bed P-4's draft has been waiting over an hour. Rahul replies:
-   > lotus-ward-coordinator ICU-2 ABG and lactate done
+**Scene 2: who may approve** (Lotus Ward)
+- **Anjali types:** `@lotus-ward-scribe approve all` → **scribe:** front desk can't approve clinical notes.
+- **You type:** `@lotus-ward-scribe approve all` → **scribe:** ✅ both approved, under your name.
 
-   ✅ The task closes as Rahul. Run the same command again: the draft nobody approved is now "nudged 1× already", so the coordinator escalates it to you in **Lotus Escalations**. Add `--brief` to also post the ☀️ ward brief there.
-5. **Lotus Ward, you** (rounds):
-   > lotus-ward-scribe ICU-2 rounds: BP better at 96 by 60 on norad 0.05, MAP fine now so drop the ICU registrar call, wean norad off by noon, start enteral feeds.
+**Scene 3: the coordinator chases** (terminal, then Lotus Ward)
+- **You run:** `npm run switch:nudge -- --at 06:45`
+- **Pulse Flow posts:** `@lotus-ward-coordinator 06:45 check: 1 late task, 1 note waiting for approval.`
+- **Coordinator posts** (to the PG on duty):
+  > Dr. Rahul, 2 things from the night:
+  > ⏰ ICU-2 Vikram Singh: STAT ABG and lactate, due 6 AM, 45 min late.
+  > 📝 P-4 Aarav Sharma: handover note waiting for approval.
+  > Reply "done ICU-2" when the ABG is done, or "approve P-4".
+- **Rahul types:** `@lotus-ward-coordinator done ICU-2` → **coordinator:** `✅ ICU-2 ABG and lactate, done by Dr. Rahul.`
+- **You run the same command again.** P-4's note is still waiting, so the coordinator tells the consultant in **Lotus Escalations**:
+  > Dr. Menon, still open after a reminder to Dr. Rahul:
+  > 📝 P-4 Aarav Sharma: handover note waiting for approval.
 
-   A rounds draft that only you can approve (Rahul can try; he's refused). Approve it: the registrar-call task is stopped and the new ones appear on the ward screen.
-6. **Lotus OPD Desk, Anjali**:
-   > lotus-opd-desk walk-in Ramesh Patil 54 male, chest pain since morning and sweating, 9812345678, ok for WhatsApp
+**Scene 4: consultant rounds** (Lotus Ward)
+- **You type:**
+  > @lotus-ward-scribe ICU-2 rounds: BP better at 96 by 60 on norad 0.05, MAP fine now so drop the ICU registrar call, wean norad off by noon, start enteral feeds.
+- **Scribe replies:** the updated plan (new tasks, the registrar call stopped) and asks you to approve.
+- **You type:** `@lotus-ward-scribe approve ICU-2`. (If Rahul tries, he's refused: only the consultant approves rounds.)
 
-   A token, plus 🚨 in Escalations, though nobody typed "emergency".
-7. **Web app** `/opd` as Dr. Rao (switch persona) → call next → dictate → sign. **Lotus Pharmacy & Lab** gets 🧾 and the fulfilment agent lists the order. As pharmacist: `lotus-fulfilment DER-001 preparing`, then `ready`.
-8. **Web app** `/audit` → **Switch rooms** as Deepak: every agent action under the person it acted for.
+**Scene 5: walk-in** (Lotus OPD Desk)
+- **Anjali types:**
+  > @lotus-opd-desk walk-in Ramesh Patil 54 male, chest pain since morning and sweating, 9812345678, ok for WhatsApp
+- **OPD desk replies:** token, room and doctor, and "send him straight in". **Lotus Escalations** gets 🚨 from Pulse Flow, though nobody typed "emergency".
+
+**Scene 6: pharmacy** (web app, then Lotus Pharmacy & Lab)
+- In the web app, `/opd` as Dr. Rao → call next → dictate → sign. **Pulse Flow posts** 🧾 in Lotus Pharmacy & Lab.
+- **Pharmacist types:** `@lotus-fulfilment DER-001 ready` → `✅ DER-001 ready.`
+
+**Scene 7: the record** — web app `/audit` → **Switch rooms** as Deepak: every agent action under the person it acted for.
 
 ## If something doesn't work
 
