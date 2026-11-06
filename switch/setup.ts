@@ -31,7 +31,7 @@ for (const [agent, tools] of Object.entries(AGENT_TOOLSETS)) {
     mcpServers: {
       "pulse-flow": {
         command: tsx,
-        args: ["--env-file", join(repo, ".env"), "--conditions=react-server", "--tsconfig", join(repo, "tsconfig.json"), join(repo, "switch", "mcp", "server.ts")],
+        args: ["--tsconfig", join(repo, "tsconfig.json"), "--env-file", join(repo, ".env"), "--conditions=react-server", join(repo, "switch", "mcp", "server.ts")],
         env: { PULSE_FLOW_AGENT: agent, PULSE_FLOW_FACILITY: facility, PULSE_FLOW_TOOLS: tools.join(",") },
       },
     },
