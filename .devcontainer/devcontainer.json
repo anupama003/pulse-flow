@@ -1,0 +1,18 @@
+{
+  "name": "Pulse Flow",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
+  },
+  "forwardPorts": [3000],
+  "portsAttributes": { "3000": { "label": "Pulse Flow", "onAutoForward": "openPreview" } },
+  "postCreateCommand": "npm run setup",
+  "postStartCommand": "npm run db:up",
+  "secrets": {
+    "GEMINI_API_KEY": { "description": "Optional: AI structuring in the web app (free at aistudio.google.com/apikey)" },
+    "SWITCH_URL": { "description": "Optional: your Switch server address" },
+    "SWITCH_AGENT_ID": { "description": "Optional: from npm run switch:register" },
+    "SWITCH_AGENT_API_KEY": { "description": "Optional: from npm run switch:register" }
+  }
+}
