@@ -11,6 +11,7 @@ import { approveDraft, discardDraft, getCarePlan, getCensus, getDashboard, setTa
 import { mostRecentIst, wardFollowups } from "../ward/followups";
 import { draftHandover, matchPatient } from "../ward/handover";
 import { draftRounds } from "../ward/rounds";
+import { runWithCtx } from "../context";
 import { resolveActor } from "./actor";
 
 // The tools Pulse Flow gives its Switch agents (served over MCP by switch/mcp/server.ts).
@@ -29,6 +30,8 @@ interface ToolSpec<S extends z.ZodRawShape> {
   perm: Permission;
   purpose: string;
   run: (u: SessionUser, args: z.infer<z.ZodObject<S>>) => Promise<unknown>;
+  /** Read-only tools Pulse Flow's own messages trigger: with Pulse Flow as the sender, this runs as SYSTEM. */
+  runForPulseFlow?: (args: z.infer<z.ZodObject<S>>) => Promise<unknown>;
 }
 
 export interface AgentTool {
@@ -38,10 +41,22 @@ export interface AgentTool {
   perm: Permission;
   purpose: string;
   run: (u: SessionUser, args: Record<string, unknown>) => Promise<unknown>;
+  runForPulseFlow?: (args: Record<string, unknown>) => Promise<unknown>;
 }
 
-// The cast is safe: runAgentTool() parses every call with `input` before `run` sees it.
-const tool = <S extends z.ZodRawShape>(t: ToolSpec<S>): AgentTool => ({ ...t, run: (u, args) => t.run(u, args as z.infer<z.ZodObject<S>>) });
+// The casts are safe: runAgentTool() parses every call with `input` before `run` sees it.
+const tool = <S extends z.ZodRawShape>(t: ToolSpec<S>): AgentTool => {
+  const forPulseFlow = t.runForPulseFlow;
+  return {
+    ...t,
+    run: (u, args) => t.run(u, args as z.infer<z.ZodObject<S>>),
+    runForPulseFlow: forPulseFlow && ((args) => forPulseFlow(args as z.infer<z.ZodObject<S>>)),
+  };
+};
+
+/** Pulse Flow's own account in the rooms, as an agent may name the sender of its messages. */
+const PULSE_FLOW_SENDERS = new Set(["pulse flow", "pulse-flow-events", "pulse-flow", "pulseflow"]);
+const isPulseFlowSender = (actor: string) => PULSE_FLOW_SENDERS.has(actor.trim().replace(/^@/, "").toLowerCase());
 
 // ─── Ward ─────────────────────────────────────────────────────────────────────
 
@@ -176,6 +191,9 @@ const submitRounds = tool({
   },
 });
 
+/** With `at` (from Pulse Flow's "06:45 check"), the agent is answering that check. */
+const followupsAt = (at?: string) => (at ? wardFollowups(mostRecentIst(at), { answeringCheck: true }) : wardFollowups());
+
 const followups = tool({
   name: "ward_followups",
   description: "What needs chasing: tasks past their stated time (or STAT not done in 30 min) and drafts waiting for approval, with the PG on duty, each patient's consultant and how often each was already nudged. Pass `at` when Pulse Flow's check message names a time (\"06:45 check: …\").",
@@ -185,7 +203,8 @@ const followups = tool({
   },
   perm: "ward:read",
   purpose: "Ward follow-up check",
-  run: async (_u, { at }) => (at ? wardFollowups(mostRecentIst(at), { answeringCheck: true }) : wardFollowups()),
+  run: async (_u, { at }) => followupsAt(at),
+  runForPulseFlow: async ({ at }) => followupsAt(at),
 });
 
 // ─── OPD ──────────────────────────────────────────────────────────────────────
@@ -315,6 +334,12 @@ export async function runAgentTool(t: AgentTool, rawArgs: unknown, opts: { facil
     const issue = parsed.error.issues[0];
     throw new UserError(`Invalid ${issue?.path.join(".") || "input"}: ${issue?.message ?? "check the arguments"}.`);
   }
+  const route = `switch:${opts.agentName}`;
+  const forPulseFlow = t.runForPulseFlow;
+  if (forPulseFlow && isPulseFlowSender(String(parsed.data.actor))) {
+    const ctx = { facilityId: opts.facilityId, actorId: null, actorRole: "SYSTEM", purpose: `${t.purpose} (Pulse Flow check via Switch)`, route };
+    return runWithCtx(ctx, () => forPulseFlow(parsed.data));
+  }
   const u = await resolveActor(String(parsed.data.actor), opts.facilityId);
-  return runAsStaff(u, t.perm, { purpose: `${t.purpose} (via Switch)`, route: `switch:${opts.agentName}` }, (me) => t.run(me, parsed.data));
+  return runAsStaff(u, t.perm, { purpose: `${t.purpose} (via Switch)`, route }, (me) => t.run(me, parsed.data));
 }

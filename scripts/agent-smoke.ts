@@ -178,10 +178,17 @@ async function main() {
     assert.match(String((brief?.meta as { text?: string }).text), /^☀️ Ward brief, Lotus Ridge Hospital: 5 patients/);
   });
 
-  await test("coordinator: ward_followups answers a PG, refuses a pharmacist", async () => {
+  await test("coordinator: ward_followups answers a PG and Pulse Flow's own check (as the system), refuses a pharmacist", async () => {
     const f = await call("ward_followups", { actor: "Dr. Rahul Verma" });
     assert.ok(Array.isArray(f.overdueTasks) && Array.isArray(f.staleDrafts));
+    for (const sender of ["Pulse Flow", "pulse-flow-events"]) {
+      const s = await call("ward_followups", { actor: sender, at: "06:45" });
+      assert.ok(Array.isArray(s.overdueTasks), sender);
+    }
+    const read = await base.auditLog.findFirst({ where: { route: "switch:smoke-test", actorRole: "SYSTEM" }, orderBy: { at: "desc" } });
+    assert.ok(read, "the system read is audit-logged under the agent's route");
     await assert.rejects(call("ward_followups", { actor: "Farhan Sheikh" }), ForbiddenError);
+    await assert.rejects(call("complete_task", { actor: "Pulse Flow", taskId: "anything" }), /doesn't match/);
   });
 
   await test("MCP: the real tool server starts over stdio, exposes only the agent's toolset, and answers a call", async () => {
