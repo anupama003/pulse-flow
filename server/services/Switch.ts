@@ -148,7 +148,7 @@ export function buildWardNudge(f: WardFollowups, coordinator: string): RoomMessa
     patientIds: [...new Set([...f.overdueTasks.map((t) => t.patientId), ...f.staleDrafts.map((d) => d.patientId)])],
     itemIds: [...f.overdueTasks.map((t) => t.taskId), ...f.staleDrafts.map((d) => d.noteId)],
     text: [
-      `${coordinator}: follow-up check. PG on duty: ${f.pgOnDuty ?? "unknown"}.`,
+      `@${coordinator} follow-up check. PG on duty: ${f.pgOnDuty ?? "unknown"}.`,
       ...(tasks.length ? ["⏰ Late tasks:", ...tasks] : []),
       ...(drafts.length ? ["📝 Waiting for approval:", ...drafts] : []),
     ].join("\n"),

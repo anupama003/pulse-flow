@@ -164,7 +164,7 @@ async function main() {
     await runWardChecks({ brief: false, now: later });
     const last = await base.auditLog.findFirst({ where: { entity: "Switch", meta: { path: ["event"], equals: "WARD_NUDGE" } }, orderBy: { at: "desc" } });
     const text = String((last?.meta as { text?: string }).text);
-    assert.match(text, /^lotus-ward-coordinator: follow-up check\. PG on duty: Dr\. /);
+    assert.match(text, /^@lotus-ward-coordinator follow-up check\. PG on duty: Dr\. /);
     assert.match(text, /nudged \d+× already/);
     const brief = await base.auditLog.findFirst({ where: { entity: "Switch", meta: { path: ["event"], equals: "WARD_BRIEF" } }, orderBy: { at: "desc" } });
     assert.match(String((brief?.meta as { text?: string }).text), /^☀️ Ward brief, Lotus Ridge Hospital: 5 patients/);

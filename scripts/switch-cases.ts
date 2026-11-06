@@ -59,7 +59,7 @@ test("toSwitchRequest: no room configured for the event → null (simulated, nev
   assert.equal(toSwitchRequest({ ...cfg, rooms: { ward: "!ward:room" } }, m), null);
 });
 test("switchConfig: incomplete env → null; full env → trimmed URL and rooms", () => {
-  const keys = ["SWITCH_URL", "SWITCH_AGENT_ID", "SWITCH_AGENT_API_KEY", "SWITCH_ROOM_WARD"] as const;
+  const keys = ["SWITCH_URL", "SWITCH_AGENT_ID", "SWITCH_AGENT_API_KEY", "SWITCH_ROOM_WARD", "SWITCH_ROOM_ESCALATIONS", "SWITCH_ROOM_OPD", "SWITCH_ROOM_FULFILMENT"] as const;
   const saved = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
   try {
     for (const k of keys) delete process.env[k];
@@ -168,7 +168,7 @@ test("nudge: addressed to the coordinator by name, with ids, PG on duty, consult
     "lotus-ward-coordinator",
   )!;
   assert.equal(m.room, "ward");
-  assert.ok(m.text.startsWith("lotus-ward-coordinator: follow-up check. PG on duty: Dr. Priya Raghavan."));
+  assert.ok(m.text.startsWith("@lotus-ward-coordinator follow-up check. PG on duty: Dr. Priya Raghavan."));
   assert.match(m.text, /\[task t1\] Bed ICU-2 Vikram Singh · STAT Repeat ABG \(due 6 AM\) · 20 min late · consultant Dr\. Suresh Menon · nudged 1× already/);
   assert.match(m.text, /\[note n1\] Bed 21 Fatima Khan · 🔴 critical rounds draft by Dr\. Suresh Menon · waiting 45 min for the consultant/);
   assert.deepEqual(m.itemIds, ["t1", "n1"]);
