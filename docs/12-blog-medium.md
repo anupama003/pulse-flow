@@ -2,14 +2,13 @@
 Publishing notes (delete before posting)
 - Medium/Substack: upload each image where its ![...] line is. Files are in docs/assets/blog/.
 - Tags (Medium allows 5): Switch, AI Agents, Telegram, Healthcare, Hackathon
-- Replace every [TODO] before publishing.
 -->
 
 # Pulse Flow: AI agents inside a hospital's Telegram groups, built on Switch
 
 *How I used Switch, Claude Code and MCP to put three agents into a hospital's ward, front-desk and pharmacy groups, and what I learned about Switch along the way. It's written for anyone opening Switch for the first time.*
 
-**Code:** [github.com/anupama003/pulse-flow](https://github.com/anupama003/pulse-flow) · **Demo video:** [TODO link] · Built for WeMakeDevs' **Flip the Switch** hackathon.
+**Live demo:** [pulse-flow-fs0r.onrender.com](https://pulse-flow-fs0r.onrender.com) · **Code:** [github.com/anupama003/pulse-flow](https://github.com/anupama003/pulse-flow) · Built for WeMakeDevs' **Flip the Switch** hackathon.
 
 ![Pulse Flow: AI agents inside a hospital's Telegram groups](assets/blog/cover.png)
 
@@ -366,6 +365,8 @@ The agent tests start the actual MCP server over stdio, the same way Claude Code
 - **It's a prototype, not a medical device.** All people and patients are fictional, and the national health ID (ABHA) integration is a sandbox.
 
 ## Try it
+
+The web app is live at [pulse-flow-fs0r.onrender.com](https://pulse-flow-fs0r.onrender.com), with the demo hospital loaded. The Telegram agents run on my laptop's Switch server, so the live site shows "Switch off"; everything else works. To run all of it yourself:
 
 ```bash
 git clone https://github.com/anupama003/pulse-flow.git && cd pulse-flow

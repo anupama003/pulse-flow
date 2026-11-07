@@ -6,6 +6,12 @@
 
 Doctors keep talking in the chat app they already use. Pulse Flow's agents turn what they say into approved patient records, flag the patients who need a doctor now, and leave an audit trail. Built on [Switch](https://www.switchagents.ai) for the WeMakeDevs *Flip the Switch* hackathon.
 
+| | |
+|---|---|
+| **Live demo** | [pulse-flow-fs0r.onrender.com](https://pulse-flow-fs0r.onrender.com) |
+| **Code** | [github.com/anupama003/pulse-flow](https://github.com/anupama003/pulse-flow) |
+| **Blog post** | [Pulse Flow on DEV](https://dev.to/anupama003/pulse-flow-ai-agents-inside-a-hospitals-telegram-groups-built-on-switch-2311) |
+
 ## The problem
 
 Hospitals in India coordinate in WhatsApp and Telegram groups. At 3 AM the night resident hands over twelve patients as a long voice note or a wall of text. Somewhere in it is "bed 21 stable, BP 80/50 at 2". The day team reads "stable" and moves on.
@@ -125,7 +131,9 @@ A labelled sidebar reaches every page (Ward, OPD console, Front desk, Pharmacy, 
 
 ## Try it
 
-You need Node 20.11+ and Docker.
+**No install:** open the [live demo](https://pulse-flow-fs0r.onrender.com). It runs the full web app on the seeded Lotus Ridge hospital. Use the left sidebar to move between the ward, OPD console, front desk, pharmacy, diagnostics, Queue TV and audit log; a page your current role can't open says "as …" and opens as the right colleague. The header shows **Switch off** there, because the Telegram agents run on the Switch server on the author's laptop; the chat side is shown in the [blog post](https://dev.to/anupama003/pulse-flow-ai-agents-inside-a-hospitals-telegram-groups-built-on-switch-2311) and [switch/TELEGRAM.md](switch/TELEGRAM.md).
+
+**Run it yourself:** you need Node 20.11+ and Docker.
 
 ```bash
 git clone https://github.com/anupama003/pulse-flow.git && cd pulse-flow
