@@ -4,8 +4,6 @@ import { readFileSync } from "node:fs";
 import { chatHandleMap, matchStaff } from "../lib/agents/actor";
 import { AGENT_TOOLS } from "../lib/agents/tools";
 import { buildCriticalAlert, buildEmergencyWalkIn, buildRxSigned, switchConfig, toSwitchRequest, type SwitchConfig } from "../server/services/Switch";
-import { lateBy, mostRecentIst, parseDue, type WardFollowups } from "../lib/ward/followups";
-import { buildWardBrief, buildWardNudge } from "../server/services/Switch";
 import { registrationBody } from "../switch/register";
 import { roleInstructions } from "../switch/role-instructions";
 import { buildTelegramTemplate, TELEGRAM_JOINS } from "../switch/telegram-template";
@@ -125,72 +123,6 @@ test("template: each agent's directory matches a toolset folder and is a Claude 
   assert.equal((yaml.match(/provider: claude/g) ?? []).length, Object.keys(AGENT_TOOLSETS).length);
 });
 
-// ── Ward coordinator: deadlines and nudges ───────────────────────────────────
-const ist = (hhmm: string, day = "2026-11-07") => new Date(`${day}T${hhmm}:00+05:30`);
-test("due: '6 AM' ordered at 2 AM is 6 AM the same day; ordered at 7 AM it's the next morning", () => {
-  assert.equal(parseDue("6 AM", ist("02:00"))?.toISOString(), ist("06:00").toISOString());
-  assert.equal(parseDue("6 am", ist("07:00"))?.toISOString(), ist("06:00", "2026-11-08").toISOString());
-});
-test("due: bare '4' is the next 4 o'clock (AM at night, PM in the day); 24h and pm work", () => {
-  assert.equal(parseDue("4", ist("01:30"))?.toISOString(), ist("04:00").toISOString());
-  assert.equal(parseDue("4", ist("11:00"))?.toISOString(), ist("16:00").toISOString());
-  assert.equal(parseDue("at 8 pm", ist("09:00"))?.toISOString(), ist("20:00").toISOString());
-  assert.equal(parseDue("06:30", ist("02:00"))?.toISOString(), ist("06:30").toISOString());
-});
-test("due: relative and immediate times; vague ones are never guessed", () => {
-  assert.equal(parseDue("in 2 hours", ist("02:00"))?.toISOString(), ist("04:00").toISOString());
-  assert.equal(parseDue("now", ist("02:00"))?.toISOString(), ist("02:00").toISOString());
-  for (const vague of ["tomorrow", "after surgical review", "in 2 days", null, ""]) assert.equal(parseDue(vague, ist("02:00")), null, String(vague));
-});
-test("due: recurring orders ('every 4 hours', '4-hourly', 'q4h', 'hourly') have no single deadline", () => {
-  for (const recurring of ["every 4 hours", "4-hourly", "4 hourly", "q4h", "hourly", "every 2 hrs"]) assert.equal(parseDue(recurring, ist("02:00")), null, recurring);
-});
-test("late: 15 min grace after the stated time; STAT with no time is late after 30 min; ROUTINE with no time never", () => {
-  const ordered = ist("02:00");
-  assert.equal(lateBy({ priority: "HIGH", dueText: "6 AM", createdAt: ordered }, ist("06:10")), null);
-  assert.equal(lateBy({ priority: "HIGH", dueText: "6 AM", createdAt: ordered }, ist("06:20")), 20);
-  assert.equal(lateBy({ priority: "STAT", dueText: null, createdAt: ordered }, ist("02:20")), null);
-  assert.equal(lateBy({ priority: "STAT", dueText: null, createdAt: ordered }, ist("02:45")), 15);
-  assert.equal(lateBy({ priority: "ROUTINE", dueText: null, createdAt: ordered }, ist("09:00")), null);
-});
-
-const followups = (o: Partial<WardFollowups> = {}): WardFollowups => ({ checkedAt: "", pgOnDuty: "Dr. Priya Raghavan", overdueTasks: [], ...o });
-test("nudge: nothing late → no message at all (quiet wards get no noise)", () => {
-  assert.equal(buildWardNudge(followups(), "lotus-ward-coordinator"), null);
-});
-test("nudge: one short line people can read, tagging the coordinator with the check time; details stay out of chat", () => {
-  const m = buildWardNudge(
-    followups({
-      checkedAt: ist("07:00").toISOString(),
-      overdueTasks: [{ taskId: "t1", patientId: "p-a", bed: "ICU-2", patient: "Vikram Singh", task: "Repeat ABG", priority: "STAT", dueText: "6 AM", minutesLate: 60, consultant: "Dr. Suresh Menon", nudgedBefore: 0 }],
-    }),
-    "lotus-ward-coordinator",
-  )!;
-  assert.equal(m.room, "ward");
-  assert.equal(m.text, "@lotus-ward-coordinator 07:00 check: 1 late task.");
-  assert.deepEqual(m.itemIds, ["t1"]);
-  assert.deepEqual(m.patientIds, ["p-a"]);
-});
-test("nudge: counts read naturally (plural, and only what there is)", () => {
-  const task: WardFollowups["overdueTasks"][number] = { taskId: "t", patientId: "p", bed: "7", patient: "M", task: "KFT", priority: "HIGH", dueText: "8 AM", minutesLate: 185, consultant: null, nudgedBefore: 0 };
-  const m = buildWardNudge(followups({ checkedAt: ist("08:30").toISOString(), overdueTasks: [task, { ...task, taskId: "u" }] }), "c")!;
-  assert.equal(m.text, "@c 08:30 check: 2 late tasks.");
-});
-test("check time: '06:45' means the most recent 06:45 IST; junk is refused", () => {
-  const at = mostRecentIst("06:45");
-  assert.ok(at.getTime() <= Date.now() && Date.now() - at.getTime() < 24 * 3600_000);
-  assert.equal(new Date(at.getTime() + 5.5 * 3600_000).toISOString().slice(11, 16), "06:45");
-  assert.throws(() => mostRecentIst("quarter to 7"));
-});
-test("brief: critical beds first, then by bed number, with counts in the headline", () => {
-  const p = (bed: string, critical: boolean) => ({ bed, name: `P${bed}`, diagnosis: null, critical, criticalReasons: critical ? ["BP 80/50"] : [], openTasks: 1, draftWaiting: false, patientId: bed });
-  const m = buildWardBrief({ facilityName: "Lotus Ridge Hospital", lateTasks: 2, draftsWaiting: 1, patients: [p("12", false), p("7", false), p("ICU-2", true)] });
-  assert.equal(m.room, "escalations");
-  const lines = m.text.split("\n");
-  assert.match(lines[0], /3 patients, 1 critical, 1 draft waiting, 2 late tasks/);
-  assert.deepEqual(lines.slice(1).map((l) => l.split(" ")[2]), ["ICU-2", "7", "12"]);
-});
-
 // ── Telegram template ────────────────────────────────────────────────────────
 test("Telegram template is generated from the main one and is up to date (npm run switch:templates)", () => {
   const main = readFileSync("switch/pulse-flow-hospital.template.yaml", "utf8");
@@ -218,7 +150,7 @@ test("every agent's CLAUDE.md gets its role steps from the template, with the te
     assert.ok(role.startsWith("You are the"), agent);
     assert.ok(!role.includes("{team}") && !role.includes("instructions: |"), agent);
   }
-  assert.match(roleInstructions(template, "ward-coordinator", "lotus"), /Call ward_followups with at = the time/);
+  assert.match(roleInstructions(template, "ward-scribe", "lotus"), /call submit_handover with actor = their chat name/);
 });
 
 console.log(`\n${passed} Switch tests passed`);

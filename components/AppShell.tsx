@@ -189,7 +189,7 @@ export default function AppShell({
 /** Header badge: is the hospital's Telegram groups connected through Switch, or is this the app on its own? */
 function SwitchBadge({ on }: { on: boolean }) {
   const title = on
-    ? "Connected to Switch: alerts go to the hospital's Telegram groups, and the ward coordinator agent follows up on late work."
+    ? "Connected to Switch: alerts go to the hospital's Telegram groups, and the agents there act for the person who asks."
     : "Switch is off: alerts and late tasks stay on these screens. Nobody is messaged and no agent follows up.";
   return (
     <Link

@@ -1,6 +1,5 @@
 import "server-only";
 import { audit } from "@/lib/db";
-import { istHhmm, type WardFollowups } from "@/lib/ward/followups";
 
 // Switch: posts Pulse Flow's clinical events into the hospital's team-chat rooms, where staff and
 // the Pulse Flow agents (switch/pulse-flow-hospital.template.yaml) pick them up. This replaces the
@@ -18,7 +17,7 @@ import { istHhmm, type WardFollowups } from "@/lib/ward/followups";
 //   SWITCH_ROOM_WARD, SWITCH_ROOM_ESCALATIONS, SWITCH_ROOM_OPD, SWITCH_ROOM_FULFILMENT   room ids
 
 export type RoomKey = "ward" | "escalations" | "opd" | "fulfilment";
-export type RoomEvent = "CRITICAL_PATIENT" | "RX_SIGNED" | "EMERGENCY_WALK_IN" | "WARD_NUDGE" | "WARD_BRIEF";
+export type RoomEvent = "CRITICAL_PATIENT" | "RX_SIGNED" | "EMERGENCY_WALK_IN";
 export type DeliveryStatus = "SENT" | "SIMULATED" | "FAILED";
 
 export interface RoomMessage {
@@ -26,8 +25,6 @@ export interface RoomMessage {
   room: RoomKey;
   text: string;
   patientIds: string[];
-  /** Tasks/notes a nudge names, so the next check can count repeat nudges. */
-  itemIds?: string[];
 }
 
 export interface SwitchConfig {
@@ -130,55 +127,6 @@ export function buildEmergencyWalkIn(p: {
   };
 }
 
-/**
- * Wakes the ward coordinator agent with one short line people in the room can read: the tag
- * (how Switch wakes an agent), the check time and the counts. The coordinator fetches the
- * details with its ward_followups tool for that time, so ids and repeat counts never reach chat.
- * Null when there is nothing to chase, so quiet wards get no noise.
- */
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
-
-export function buildWardNudge(f: WardFollowups, coordinator: string): RoomMessage | null {
-  if (!f.overdueTasks.length) return null;
-  return {
-    event: "WARD_NUDGE",
-    room: "ward",
-    patientIds: [...new Set(f.overdueTasks.map((t) => t.patientId))],
-    itemIds: f.overdueTasks.map((t) => t.taskId),
-    text: `@${coordinator} ${istHhmm(new Date(f.checkedAt))} check: ${plural(f.overdueTasks.length, "late task")}.`,
-  };
-}
-
-export interface BriefPatient {
-  bed: string;
-  name: string;
-  diagnosis: string | null;
-  critical: boolean;
-  criticalReasons: string[];
-  openTasks: number;
-  draftWaiting: boolean;
-  patientId: string;
-}
-
-/** The consultant's 8 AM ward brief: critical beds first, one line per bed. */
-export function buildWardBrief(p: { patients: BriefPatient[]; lateTasks: number; draftsWaiting: number; facilityName: string }): RoomMessage {
-  const order = [...p.patients].sort((a, b) => Number(b.critical) - Number(a.critical) || a.bed.localeCompare(b.bed, undefined, { numeric: true }));
-  const line = (x: BriefPatient) =>
-    `${x.critical ? "🔴" : "•"} Bed ${x.bed} ${x.name}${x.diagnosis ? ` · ${x.diagnosis}` : ""}` +
-    `${x.critical && x.criticalReasons.length ? ` · ${x.criticalReasons.join(", ")}` : ""}` +
-    `${x.openTasks ? ` · ${x.openTasks} open task${x.openTasks === 1 ? "" : "s"}` : ""}${x.draftWaiting ? " · draft waiting" : ""}`;
-  const critical = order.filter((x) => x.critical).length;
-  return {
-    event: "WARD_BRIEF",
-    room: "escalations",
-    patientIds: p.patients.map((x) => x.patientId),
-    text: [
-      `☀️ Ward brief, ${p.facilityName}: ${p.patients.length} patients, ${critical} critical, ${p.draftsWaiting} draft${p.draftsWaiting === 1 ? "" : "s"} waiting, ${p.lateTasks} late task${p.lateTasks === 1 ? "" : "s"}.`,
-      ...order.map(line),
-    ].join("\n"),
-  };
-}
-
 // ─── Transport ────────────────────────────────────────────────────────────────
 
 /** The Switch agent-protocol call for one message. Pure, so it is unit-tested without a server. */
@@ -216,7 +164,6 @@ export async function postToRoom(m: RoomMessage): Promise<DeliveryStatus> {
       patientIds: m.patientIds,
       meta: {
         event: m.event, room: m.room, status: outcome.status, text: m.text,
-        ...(m.itemIds?.length ? { itemIds: m.itemIds } : {}),
         ...(outcome.error ? { error: outcome.error } : {}),
       },
     });

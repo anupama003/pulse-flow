@@ -1,10 +1,10 @@
-# Pulse Flow hospital rooms: the ward WhatsApp group, the OPD front desk and the pharmacy/lab
-# runner, rebuilt as Switch rooms with four Pulse Flow agents and the people they work with.
+# Pulse Flow hospital rooms: the ward group, the OPD front desk and the pharmacy/lab
+# runner, rebuilt as Switch rooms with three Pulse Flow agents and the people they work with.
 # This version creates the rooms (Slack, Discord, Mattermost, Teams). For Telegram, where groups
 # must be created in Telegram first, use pulse-flow-telegram.template.yaml instead.
 #
 #   ward          PGs dictate handovers, consultants dictate rounds; the ward scribe drafts SBAR notes
-#                 for approval; the ward coordinator chases late tasks and waiting notes
+#                 for approval
 #   escalations   consultants; critical patients and emergency walk-ins land here
 #   opd-desk      front desk registers walk-ins by chat; the OPD desk agent issues tokens
 #   fulfilment    pharmacy + lab; signed prescriptions arrive, staff update orders by chat
@@ -76,36 +76,6 @@ agents:
       (bed, name, reasons) addressed to the consultants, and say it's awaiting approval in the
       ward room. Pulse Flow also posts its own alert there; don't duplicate it, add the context.
 
-  - name: "{team}-ward-coordinator"
-    description: Chases late tasks and unapproved notes, and escalates what stays stuck
-    addressing: anyone
-    provider: claude
-    location: "{location}"
-    directory: "{pulse_flow_dir}/switch/agents/ward-coordinator"
-    instructions: |
-      You are the ward coordinator: the charge nurse who chases. You never decide anything
-      clinical, never approve notes, and never mark a task done unless a person says it is. Your
-      CLAUDE.md has the rules every Pulse Flow agent follows; read it first. You sit in the ward
-      room and the escalations room.
-
-      You only chase late tasks. One rule: remind the PG on duty first; if the task is still not
-      done at the next check, tell the patient's consultant.
-
-      Pulse Flow wakes you with "@{team}-ward-coordinator 07:00 check: 1 late task" in the ward
-      room. Then:
-      1. Call ward_followups with at = the time in that message (e.g. "07:00").
-      2. Tasks with nudgedBefore = 0: post ONE message in the ward room to the PG on duty, by
-         name, one line per task, then what to reply. Example:
-           Dr. Rahul, ICU-2 Vikram Singh: STAT repeat ABG and lactate was due at 6 AM, now 1 hour late.
-           Reply "done ICU-2" once it's done.
-      3. Tasks with nudgedBefore = 1 (reminded once, still not done): post ONE message in the
-         escalations room to that patient's consultant, by name, one line per task. Example:
-           Dr. Menon, ICU-2 Vikram Singh: STAT repeat ABG and lactate, due 6 AM, still not done an hour after the reminder.
-      4. Tasks with nudgedBefore of 2 or more were already escalated: say nothing about them.
-      When someone replies "done ICU-2" (or similar), call complete_task for that bed's open task
-      with actor = that person, and reply in one line: "ICU-2 ABG and lactate, done by Dr. Priya."
-      "What's pending?" or "anything late?" → ward_followups without `at`, then a short list.
-
   - name: "{team}-opd-desk"
     description: Registers walk-ins from the front desk and keeps the OPD queue moving
     addressing: anyone
@@ -155,9 +125,9 @@ group:
 
 rooms:
   - name: "{team}-ward"
-    description: Shift handovers and ward tasks. Replaces the ward WhatsApp group.
+    description: Shift handovers, rounds and ward tasks.
     bridge: "{bridge}"
-    agents: ["{team}-ward-scribe", "{team}-ward-coordinator", "{events_agent}"]
+    agents: ["{team}-ward-scribe", "{events_agent}"]
     users: ["{$creator}"]
     docs:
       - name: How this room works
@@ -171,15 +141,13 @@ rooms:
           4. Consultants: "ICU-2: wean the norad, stop the 6 AM ABG" updates that patient's plan
              as a rounds draft only you can approve.
           5. "Done: repeat KFT bed 7" closes a task. "What's pending on bed 12?" asks.
-          6. The ward coordinator chases late tasks and waiting notes here every 15 minutes,
-             and tells the consultant in escalations if something stays stuck.
     kickoff: |
       @{team}-ward-scribe this is the ward room. Say hello in one line and explain how a doctor
       posts a handover and approves the drafts.
   - name: "{team}-escalations"
     description: Consultants. Critical patients and emergency walk-ins arrive here.
     bridge: "{bridge}"
-    agents: ["{team}-ward-scribe", "{team}-ward-coordinator", "{team}-opd-desk", "{events_agent}"]
+    agents: ["{team}-ward-scribe", "{team}-opd-desk", "{events_agent}"]
     users: ["{$creator}"]
     kickoff: |
       @{team}-ward-scribe this is the escalations room. Say in one line what will be posted here.

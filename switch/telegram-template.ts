@@ -19,7 +19,6 @@ type RoomParam = keyof typeof TELEGRAM_ROOMS;
 /** Which existing rooms each agent joins (same as the rooms each agent is in, in the main template). */
 export const TELEGRAM_JOINS: Record<string, RoomParam[]> = {
   "ward-scribe": ["ward_room", "escalations_room"],
-  "ward-coordinator": ["ward_room", "escalations_room"],
   "opd-desk": ["opd_room", "escalations_room"],
   fulfilment: ["fulfilment_room"],
 };

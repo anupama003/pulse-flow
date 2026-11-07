@@ -8,10 +8,8 @@ import { UserError } from "../result";
 import { HandoverExtractionSchema, RoundsExtractionSchema } from "../sbar/schema";
 import { runAsStaff, type SessionUser } from "../staff";
 import { approveDraft, discardDraft, getCarePlan, getCensus, getDashboard, setTaskCompleted } from "../store";
-import { mostRecentIst, wardFollowups } from "../ward/followups";
 import { draftHandover, matchPatient } from "../ward/handover";
 import { draftRounds } from "../ward/rounds";
-import { runWithCtx } from "../context";
 import { resolveActor } from "./actor";
 
 // The tools Pulse Flow gives its Switch agents (served over MCP by switch/mcp/server.ts).
@@ -30,8 +28,6 @@ interface ToolSpec<S extends z.ZodRawShape> {
   perm: Permission;
   purpose: string;
   run: (u: SessionUser, args: z.infer<z.ZodObject<S>>) => Promise<unknown>;
-  /** Read-only tools Pulse Flow's own messages trigger: with Pulse Flow as the sender, this runs as SYSTEM. */
-  runForPulseFlow?: (args: z.infer<z.ZodObject<S>>) => Promise<unknown>;
 }
 
 export interface AgentTool {
@@ -41,22 +37,13 @@ export interface AgentTool {
   perm: Permission;
   purpose: string;
   run: (u: SessionUser, args: Record<string, unknown>) => Promise<unknown>;
-  runForPulseFlow?: (args: Record<string, unknown>) => Promise<unknown>;
 }
 
 // The casts are safe: runAgentTool() parses every call with `input` before `run` sees it.
-const tool = <S extends z.ZodRawShape>(t: ToolSpec<S>): AgentTool => {
-  const forPulseFlow = t.runForPulseFlow;
-  return {
-    ...t,
-    run: (u, args) => t.run(u, args as z.infer<z.ZodObject<S>>),
-    runForPulseFlow: forPulseFlow && ((args) => forPulseFlow(args as z.infer<z.ZodObject<S>>)),
-  };
-};
-
-/** Pulse Flow's own account in the rooms, as an agent may name the sender of its messages. */
-const PULSE_FLOW_SENDERS = new Set(["pulse flow", "pulse-flow-events", "pulse-flow", "pulseflow"]);
-const isPulseFlowSender = (actor: string) => PULSE_FLOW_SENDERS.has(actor.trim().replace(/^@/, "").toLowerCase());
+const tool = <S extends z.ZodRawShape>(t: ToolSpec<S>): AgentTool => ({
+  ...t,
+  run: (u, args) => t.run(u, args as z.infer<z.ZodObject<S>>),
+});
 
 // ─── Ward ─────────────────────────────────────────────────────────────────────
 
@@ -191,22 +178,6 @@ const submitRounds = tool({
   },
 });
 
-/** With `at` (from Pulse Flow's "06:45 check"), the agent is answering that check. */
-const followupsAt = (at?: string) => (at ? wardFollowups(mostRecentIst(at), { answeringCheck: true }) : wardFollowups());
-
-const followups = tool({
-  name: "ward_followups",
-  description: "What needs chasing: tasks past their stated time (or STAT not done in 30 min), with the PG on duty, each patient's consultant and how often each was already nudged. Pass `at` when Pulse Flow's check message names a time (\"07:00 check: …\").",
-  input: {
-    actor,
-    at: z.string().regex(/^\d{1,2}:\d{2}$/).optional().describe("IST time of the check from Pulse Flow's message, e.g. 06:45. Omit for now."),
-  },
-  perm: "ward:read",
-  purpose: "Ward follow-up check",
-  run: async (_u, { at }) => followupsAt(at),
-  runForPulseFlow: async ({ at }) => followupsAt(at),
-});
-
 // ─── OPD ──────────────────────────────────────────────────────────────────────
 
 const opdQueue = tool({
@@ -319,7 +290,7 @@ const updateLab = tool({
 });
 
 export const AGENT_TOOLS: AgentTool[] = [
-  wardBoard, submitHandover, approveNote, discardNote, completeTask, carePlan, submitRounds, followups,
+  wardBoard, submitHandover, approveNote, discardNote, completeTask, carePlan, submitRounds,
   opdQueue, departments, walkIn,
   pharmacyQueue, updatePharmacy, labQueue, updateLab,
 ];
@@ -335,11 +306,6 @@ export async function runAgentTool(t: AgentTool, rawArgs: unknown, opts: { facil
     throw new UserError(`Invalid ${issue?.path.join(".") || "input"}: ${issue?.message ?? "check the arguments"}.`);
   }
   const route = `switch:${opts.agentName}`;
-  const forPulseFlow = t.runForPulseFlow;
-  if (forPulseFlow && isPulseFlowSender(String(parsed.data.actor))) {
-    const ctx = { facilityId: opts.facilityId, actorId: null, actorRole: "SYSTEM", purpose: `${t.purpose} (Pulse Flow check via Switch)`, route };
-    return runWithCtx(ctx, () => forPulseFlow(parsed.data));
-  }
   const u = await resolveActor(String(parsed.data.actor), opts.facilityId);
   return runAsStaff(u, t.perm, { purpose: `${t.purpose} (via Switch)`, route }, (me) => t.run(me, parsed.data));
 }

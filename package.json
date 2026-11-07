@@ -22,7 +22,6 @@
     "switch:mcp": "tsx --env-file=.env --conditions=react-server switch/mcp/server.ts",
     "test:agents": "tsx --env-file=.env --conditions=react-server scripts/agent-smoke.ts",
     "test:switch": "tsx --conditions=react-server scripts/switch-cases.ts",
-    "switch:nudge": "tsx --env-file=.env --conditions=react-server switch/nudge.ts",
     "switch:templates": "tsx switch/telegram-template.ts"
   },
   "dependencies": {

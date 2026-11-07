@@ -10,8 +10,6 @@ import { AGENT_TOOLS, runAgentTool } from "../lib/agents/tools";
 import { base } from "../lib/db";
 import { ForbiddenError } from "../lib/staff";
 import { UserError } from "../lib/result";
-import { runWardChecks } from "../lib/ward/nudges";
-import { wardFollowups } from "../lib/ward/followups";
 import { runWithCtx } from "../lib/context";
 
 const MARK = "SMOKE-AGENT";
@@ -154,41 +152,6 @@ async function main() {
     const task = await base.actionItem.findUniqueOrThrow({ where: { id: abgTaskId } });
     assert.equal(task.status, "CANCELLED");
     await base.actionItem.update({ where: { id: abgTaskId }, data: { status: "PENDING", isCompleted: false, completedAt: null, completedById: null } }); // put the demo back
-  });
-
-  await test("coordinator: a check posts one short line; answering it, the agent sees the PG not yet reminded, then reminded once", async () => {
-    const later = new Date(Date.now() + 2 * 24 * 60 * 60_000); // every timed task in the seed is late by then
-    const facility = await base.facility.findUniqueOrThrow({ where: { slug: "lotus-ridge" } });
-    const answering = () =>
-      runWithCtx({ facilityId: facility.id, actorId: null, actorRole: "SYSTEM", purpose: "test", route: "test" }, () => wardFollowups(later, { answeringCheck: true }));
-    const counts = (f: Awaited<ReturnType<typeof wardFollowups>>) => f.overdueTasks.map((t) => t.nudgedBefore);
-
-    const [first] = await runWardChecks({ brief: true, now: later });
-    assert.equal(first.facility, "Lotus Ridge Hospital");
-    assert.ok(first.nudge && first.nudge.items > 0);
-    assert.equal(first.nudge.status, "SIMULATED");
-    assert.equal(first.brief, "SIMULATED");
-    const last = await base.auditLog.findFirst({ where: { entity: "Switch", meta: { path: ["event"], equals: "WARD_NUDGE" } }, orderBy: { at: "desc" } });
-    assert.match(String((last?.meta as { text?: string }).text), /^@lotus-ward-coordinator \d{2}:\d{2} check: \d+ late tasks?/);
-    assert.deepEqual(new Set(counts(await answering())), new Set([0]), "the check that woke the agent isn't a reminder yet");
-
-    await runWardChecks({ brief: false, now: later });
-    assert.deepEqual(new Set(counts(await answering())), new Set([1]), "one earlier check → reminded once → escalate");
-    const brief = await base.auditLog.findFirst({ where: { entity: "Switch", meta: { path: ["event"], equals: "WARD_BRIEF" } }, orderBy: { at: "desc" } });
-    assert.match(String((brief?.meta as { text?: string }).text), /^☀️ Ward brief, Lotus Ridge Hospital: 5 patients/);
-  });
-
-  await test("coordinator: ward_followups answers a PG and Pulse Flow's own check (as the system), refuses a pharmacist", async () => {
-    const f = await call("ward_followups", { actor: "Dr. Rahul Verma" });
-    assert.ok(Array.isArray(f.overdueTasks));
-    for (const sender of ["Pulse Flow", "pulse-flow-events"]) {
-      const s = await call("ward_followups", { actor: sender, at: "07:00" });
-      assert.ok(Array.isArray(s.overdueTasks), sender);
-    }
-    const read = await base.auditLog.findFirst({ where: { route: "switch:smoke-test", actorRole: "SYSTEM" }, orderBy: { at: "desc" } });
-    assert.ok(read, "the system read is audit-logged under the agent's route");
-    await assert.rejects(call("ward_followups", { actor: "Farhan Sheikh" }), ForbiddenError);
-    await assert.rejects(call("complete_task", { actor: "Pulse Flow", taskId: "anything" }), /doesn't match/);
   });
 
   await test("MCP: the real tool server starts over stdio, exposes only the agent's toolset, and answers a call", async () => {
