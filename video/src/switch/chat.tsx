@@ -244,7 +244,7 @@ export const AppWindow: React.FC<{ src: string; url: string; width?: number; zoo
         {["#ff5f57", "#febc2e", "#28c840"].map((c) => (
           <span key={c} style={{ width: 12, height: 12, borderRadius: 12, background: c }} />
         ))}
-        <div style={{ marginLeft: 16, flex: 1, padding: "6px 16px", borderRadius: 10, background: C.white, fontFamily: MONO, fontSize: 15, color: C.slate }}>{url}</div>
+        <div style={{ marginLeft: 16, flex: 1, padding: "6px 16px", borderRadius: 10, background: C.white, fontFamily: SANS, fontSize: 16, fontWeight: 500, color: C.slate, textAlign: "center" }}>Pulse Flow · {url}</div>
       </div>
       <div style={{ overflow: "hidden" }}>
         <Img src={staticFile(src)} style={{ width: "100%", display: "block", transform: `scale(${z})`, transformOrigin: origin }} />

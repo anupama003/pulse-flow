@@ -2,13 +2,13 @@ import React from "react";
 import { AbsoluteFill, Img, interpolate, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { C, clamp, DictationCard, Eyebrow, GRAD, KeyCap, Kinetic, Mark, MONO, SANS, Stage } from "../kit";
 import { AppWindow, Callout, ChatWindow, SceneTitle, Terminal, type Msg } from "./chat";
-import { ANJALI, FARHAN, L, MENON, PF, PRIYA, RAHUL } from "./script";
+import { ANJALI, L, MENON, PF, RAHUL } from "./script";
 
 // Ten scenes, each a self-contained story beat. Frame numbers are local to the scene.
 
 const RIGHT: React.CSSProperties = { position: "absolute", right: 80, top: 70 };
 const LEFT_BOTTOM: React.CSSProperties = { position: "absolute", left: 90, bottom: 80 };
-const WARD = { title: "Lotus Ward", subtitle: "Dr. Rahul, Dr. Priya, Dr. Menon · 3 agents" };
+const WARD = { title: "Lotus Ward", subtitle: "Dr. Rahul, Dr. Menon · 2 agents" };
 const ESC = { title: "Lotus Escalations", subtitle: "Consultants · Pulse Flow alerts" };
 
 const agent = (at: number, from: string, text: string, worked?: number, tone?: Msg["tone"]): Msg => ({ at, from, text, agent: true, worked, tone });
@@ -65,10 +65,10 @@ export const Open: React.FC = () => {
 
 // ─── 2. The groups ──────────────────────────────────────────────────────────
 const GROUPS = [
-  { name: "Lotus Ward", agent: "lotus-ward-scribe · lotus-ward-coordinator", job: "Handovers, rounds, approvals, late tasks", people: [RAHUL, PRIYA, MENON], color: C.lav400 },
+  { name: "Lotus Ward", agent: "lotus-ward-scribe · lotus-ward-coordinator", job: "Handovers, rounds, approvals, late tasks", people: [RAHUL, MENON], color: C.lav400 },
   { name: "Lotus Escalations", agent: "lotus-ward-coordinator · Pulse Flow", job: "Critical patients and anything still not done", people: [MENON], color: C.blush500 },
   { name: "Lotus OPD Desk", agent: "lotus-opd-desk", job: "Walk-ins, tokens, red flags", people: [ANJALI], color: "#f2c94c" },
-  { name: "Lotus Pharmacy & Lab", agent: "lotus-fulfilment", job: "Signed prescriptions, orders moved by chat", people: [FARHAN], color: C.mint400 },
+  { name: "Lotus Pharmacy & Lab", agent: "lotus-fulfilment", job: "Signed prescriptions, orders moved by chat", people: [ANJALI], color: C.mint400 },
 ];
 export const Groups: React.FC = () => {
   const frame = useCurrentFrame();
@@ -116,7 +116,7 @@ export const Handover: React.FC = () => (
       The vitals rule overrides “stable”
     </Callout>
     <Callout at={470} color={C.mint400} style={{ left: 90, top: 410 }}>
-      Approved under Dr. Priya’s name
+      Approved under Dr. Menon’s name
     </Callout>
     <SlideIn at={300} style={{ ...LEFT_BOTTOM }}>
       <ChatWindow {...ESC} width={760} height={360} messages={[agent(312, PF, L.critAlert, undefined, "critical")]} highlight={312} />
@@ -128,14 +128,14 @@ export const Handover: React.FC = () => (
       height={940}
       composing={[
         { who: RAHUL, text: L.handover, start: 40, sent: 180, wispr: true },
-        { who: PRIYA, text: L.priyaApprove, start: 365, sent: 405 },
+        { who: MENON, text: L.menonApprove21, start: 365, sent: 405 },
       ]}
       messages={[
         human(180, RAHUL, L.handover),
         agent(215, "lotus-ward-scribe", L.scribeStructuring),
         agent(290, "lotus-ward-scribe", L.draft21, 14, "critical"),
         agent(318, "lotus-ward-scribe", L.draft7),
-        human(405, PRIYA, L.priyaApprove),
+        human(405, MENON, L.menonApprove21),
         agent(462, "lotus-ward-scribe", L.scribeApproved, 6, "ok"),
       ]}
     />
@@ -171,14 +171,14 @@ export const FollowUp: React.FC = () => (
       style={RIGHT}
       width={900}
       height={940}
-      composing={[{ who: PRIYA, text: L.priyaDone, start: 420, sent: 470 }]}
+      composing={[{ who: RAHUL, text: L.rahulDone, start: 420, sent: 470 }]}
       messages={[
-        human(-1, PRIYA, L.priyaApprove),
+        human(-1, MENON, L.menonApprove21),
         agent(-1, "lotus-ward-scribe", L.scribeApproved, undefined, "ok"),
         agent(70, PF, L.nudge0700),
         agent(140, "lotus-ward-coordinator", L.remind, 8),
         agent(305, PF, L.nudge0800),
-        human(470, PRIYA, L.priyaDone),
+        human(470, RAHUL, L.rahulDone),
         agent(530, "lotus-ward-coordinator", L.coordDone, 5, "ok"),
       ]}
     />
@@ -268,49 +268,75 @@ export const Pharmacy: React.FC = () => (
       width={900}
       height={940}
       composing={[
-        { who: FARHAN, text: L.farhanPreparing, start: 250, sent: 285 },
-        { who: FARHAN, text: L.farhanReady, start: 375, sent: 425 },
+        { who: ANJALI, text: L.anjaliPreparing, start: 250, sent: 285 },
+        { who: ANJALI, text: L.anjaliReady, start: 375, sent: 425 },
       ]}
       messages={[
         agent(205, PF, L.rxSigned, undefined, "ok"),
-        human(285, FARHAN, L.farhanPreparing),
+        human(285, ANJALI, L.anjaliPreparing),
         agent(338, "lotus-fulfilment", L.preparingOk, 5),
-        human(425, FARHAN, L.farhanReady),
+        human(425, ANJALI, L.anjaliReady),
         agent(478, "lotus-fulfilment", L.readyOk, 5, "ok"),
       ]}
     />
   </Stage>
 );
 
-// ─── 8. The web app ─────────────────────────────────────────────────────────
-const SHOTS = [
-  { src: "app/app-ward.png", url: "localhost:3000 · Ward", label: "Ward: what needs you, one view at a time" },
-  { src: "app/app-pharmacy.png", url: "localhost:3000/pharmacy", label: "Pharmacy: orders from signed prescriptions" },
-  { src: "app/app-audit-switch.png", url: "localhost:3000/audit?tab=switch", label: "Audit: every agent action, under a person" },
+// ─── 8–9. The web app ───────────────────────────────────────────────────────
+interface Shot {
+  src: string;
+  where: string;
+  label: string;
+  origin?: string;
+}
+const WARD_SHOTS: Shot[] = [
+  { src: "app/ward-handover.png", where: "Ward · Handover", label: "Speak the handover with Wispr Flow" },
+  { src: "app/ward-approve.png", where: "Ward · To approve", label: "Drafts wait for a doctor's approval", origin: "50% 60%" },
+  { src: "app/ward-patients.png", where: "Ward · Patients", label: "Critical patients first" },
+  { src: "app/ward-rounds.png", where: "Ward · Live rounds", label: "Consultant orders merge into the plan" },
+  { src: "app/ward-tasks.png", where: "Ward · Tasks", label: "One checklist, ticked off by name" },
 ];
-export const WebApp: React.FC = () => {
+const DESK_SHOTS: Shot[] = [
+  { src: "app/opd.png", where: "OPD console", label: "Dictate the prescription, sign with HPR ID" },
+  { src: "app/front-desk.png", where: "Front desk", label: "A walk-in registered in one sentence" },
+  { src: "app/pharmacy.png", where: "Pharmacy board", label: "Queued → preparing → ready → dispensed" },
+  { src: "app/lab.png", where: "Diagnostics board", label: "Ordered → collected → processing → reported" },
+  { src: "app/queue.png", where: "Queue TV", label: "The waiting room sees who's next" },
+  { src: "app/audit-switch.png", where: "Audit log · Switch rooms", label: "Every agent action, under a person" },
+];
+const Slideshow: React.FC<{ shots: Shot[]; per: number; n: string; eyebrow: string; title: string; hue?: "lav" | "mint" | "powder" | "blush" }> = ({ shots, per, n, eyebrow, title, hue = "lav" }) => {
   const frame = useCurrentFrame();
-  const per = 130;
   return (
-    <Stage>
-      <SceneTitle n="06" eyebrow="The hospital web app" title="Everything the chat does lands in the record." />
-      {SHOTS.map((s, i) => {
+    <Stage hue={hue}>
+      <SceneTitle n={n} eyebrow={eyebrow} title={title} />
+      {shots.map((s, i) => {
         const a = i * per;
-        const op = interpolate(frame, [a, a + 14, a + per, a + per + 14], [0, 1, 1, i === SHOTS.length - 1 ? 1 : 0], clamp);
+        const last = i === shots.length - 1;
+        const op = interpolate(frame, [a, a + 12, a + per, a + per + 12], [0, 1, 1, last ? 1 : 0], clamp);
         return (
-          <Sequence key={s.src} from={a} durationInFrames={per + 20} layout="none">
-            <div style={{ position: "absolute", right: 80, top: 120, opacity: op }}>
-              <AppWindow src={s.src} url={s.url} width={1080} dur={per + 20} />
+          <Sequence key={s.src} from={a} durationInFrames={last ? per + 60 : per + 14} layout="none">
+            <div style={{ position: "absolute", right: 70, top: 110, opacity: op }}>
+              <AppWindow src={s.src} url={s.where} width={1120} dur={per + 20} origin={s.origin} />
             </div>
-            <Callout at={10} color={C.lav400} style={{ left: 90, top: 360 }}>
+            <Callout at={6} color={C.lav400} style={{ left: 90, top: 380 }}>
               {s.label}
             </Callout>
           </Sequence>
         );
       })}
+      <div style={{ position: "absolute", left: 90, top: 470, display: "flex", gap: 10 }}>
+        {shots.map((s, i) => (
+          <span key={s.src} style={{ width: 34, height: 6, borderRadius: 6, background: frame >= i * per ? C.lav400 : "rgba(255,255,255,0.15)" }} />
+        ))}
+      </div>
     </Stage>
   );
 };
+export const WEB_PER = 84;
+export const WebWard: React.FC = () => <Slideshow shots={WARD_SHOTS} per={WEB_PER} n="06" eyebrow="The ward screen" title="Everything the chat does lands in the ward." />;
+export const WebDesks: React.FC = () => <Slideshow shots={DESK_SHOTS} per={WEB_PER} n="07" eyebrow="OPD, pharmacy and lab" title="One web app for every desk in the hospital." hue="mint" />;
+export const WEB_WARD_FRAMES = WARD_SHOTS.length * WEB_PER + 50;
+export const WEB_DESKS_FRAMES = DESK_SHOTS.length * WEB_PER + 50;
 
 // ─── 9. Under the hood ──────────────────────────────────────────────────────
 const AGENTS = [
@@ -324,7 +350,7 @@ export const UnderTheHood: React.FC<{ consoleShot?: string }> = ({ consoleShot }
   const { fps } = useVideoConfig();
   return (
     <Stage hue="lav">
-      <SceneTitle n="07" eyebrow="Under the hood" title="Switch rooms, Claude Code agents, Pulse Flow over MCP." />
+      <SceneTitle n="08" eyebrow="Under the hood" title="Switch rooms, Claude Code agents, Pulse Flow over MCP." />
       <div style={{ position: "absolute", left: 90, top: 330, width: 700, display: "flex", flexDirection: "column", gap: 16 }}>
         {AGENTS.map((a, i) => {
           const s = spring({ frame: frame - 20 - i * 8, fps, config: { damping: 16 } });
