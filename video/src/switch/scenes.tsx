@@ -8,7 +8,7 @@ import { ANJALI, L, MENON, PF, RAHUL } from "./script";
 
 const RIGHT: React.CSSProperties = { position: "absolute", right: 80, top: 70 };
 const LEFT_BOTTOM: React.CSSProperties = { position: "absolute", left: 90, bottom: 80 };
-const WARD = { title: "Lotus Ward", subtitle: "Dr. Rahul, Dr. Menon · 2 agents" };
+const WARD = { title: "Lotus Ward", subtitle: "Dr. Rahul, Dr. Menon · ward scribe" };
 const ESC = { title: "Lotus Escalations", subtitle: "Consultants · Pulse Flow alerts" };
 
 const agent = (at: number, from: string, text: string, worked?: number, tone?: Msg["tone"]): Msg => ({ at, from, text, agent: true, worked, tone });
@@ -65,8 +65,8 @@ export const Open: React.FC = () => {
 
 // ─── 2. The groups ──────────────────────────────────────────────────────────
 const GROUPS = [
-  { name: "Lotus Ward", agent: "lotus-ward-scribe · lotus-ward-coordinator", job: "Handovers, rounds, approvals, late tasks", people: [RAHUL, MENON], color: C.lav400 },
-  { name: "Lotus Escalations", agent: "lotus-ward-coordinator · Pulse Flow", job: "Critical patients and anything still not done", people: [MENON], color: C.blush500 },
+  { name: "Lotus Ward", agent: "lotus-ward-scribe", job: "Handovers, rounds and approvals", people: [RAHUL, MENON], color: C.lav400 },
+  { name: "Lotus Escalations", agent: "lotus-ward-scribe · lotus-opd-desk · Pulse Flow", job: "Critical patients and emergencies", people: [MENON, RAHUL], color: C.blush500 },
   { name: "Lotus OPD Desk", agent: "lotus-opd-desk", job: "Walk-ins, tokens, red flags", people: [ANJALI], color: "#f2c94c" },
   { name: "Lotus Pharmacy & Lab", agent: "lotus-fulfilment", job: "Signed prescriptions, orders moved by chat", people: [ANJALI], color: C.mint400 },
 ];
@@ -76,7 +76,7 @@ export const Groups: React.FC = () => {
   return (
     <Stage hue="powder">
       <div style={{ position: "absolute", top: 90, width: "100%", textAlign: "center" }}>
-        <Kinetic text="Four Telegram groups. Four agents." size={72} gradientWords={["agents."]} />
+        <Kinetic text="Four Telegram groups. Three agents." size={72} gradientWords={["agents."]} />
         <div style={{ marginTop: 18, fontFamily: SANS, fontSize: 28, color: "rgba(255,255,255,0.65)", opacity: interpolate(frame, [20, 34], [0, 1], clamp) }}>Brought into the chat by Switch. Each one acts for the person who asked.</div>
       </div>
       <div style={{ position: "absolute", left: 170, right: 170, top: 330, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 34 }}>
@@ -137,52 +137,10 @@ export const Handover: React.FC = () => (
   </Stage>
 );
 
-// ─── 4. Follow-up ───────────────────────────────────────────────────────────
-export const FollowUp: React.FC = () => (
-  <Stage hue="blush">
-    <SceneTitle n="02" eyebrow="The coordinator follows up" title="A late test is chased. If nobody acts, the consultant hears." color={C.blush500} />
-    <SlideIn at={6} style={{ left: 90, top: 300 }}>
-      <Terminal
-        width={760}
-        height={330}
-        lines={[
-          { at: 14, text: "npm run switch:nudge -- --at 07:00", cmd: true },
-          { at: 50, text: "Simulating a check at 07:00 IST." },
-          { at: 64, text: "Lotus Ridge Hospital: 1 item(s) → #ward (sent)", color: C.mint400 },
-          { at: 250, text: "npm run switch:nudge -- --at 08:00", cmd: true },
-          { at: 286, text: "Simulating a check at 08:00 IST." },
-          { at: 300, text: "Lotus Ridge Hospital: 1 item(s) → #ward (sent)", color: C.mint400 },
-        ]}
-      />
-    </SlideIn>
-    <Callout at={200} color="#f2c94c" style={{ left: 90, top: 615 }}>
-      07:00 → 08:00 · no reply from Dr. Rahul
-    </Callout>
-    <SlideIn at={320} style={{ ...LEFT_BOTTOM, bottom: 60 }}>
-      <ChatWindow {...ESC} width={760} height={330} messages={[agent(352, "lotus-ward-coordinator", L.escalate, 14, "critical")]} highlight={352} />
-    </SlideIn>
-    <ChatWindow
-      {...WARD}
-      style={RIGHT}
-      width={900}
-      height={940}
-      composing={[{ who: RAHUL, text: L.rahulDone, start: 420, sent: 470 }]}
-      messages={[
-        agent(-1, "lotus-ward-scribe", L.draft7),
-        agent(70, PF, L.nudge0700),
-        agent(140, "lotus-ward-coordinator", L.remind, 8),
-        agent(305, PF, L.nudge0800),
-        human(470, RAHUL, L.rahulDone),
-        agent(530, "lotus-ward-coordinator", L.coordDone, 5, "ok"),
-      ]}
-    />
-  </Stage>
-);
-
 // ─── 5. Rounds ──────────────────────────────────────────────────────────────
 export const Rounds: React.FC = () => (
   <Stage hue="powder">
-    <SceneTitle n="03" eyebrow="Consultant rounds" title="Dr. Menon dictates rounds. Only he can approve the plan." color="#7fb2f0" />
+    <SceneTitle n="02" eyebrow="Consultant rounds" title="Dr. Menon dictates rounds. Only he can approve the plan." color="#7fb2f0" />
     <WisprKey from={30} to={140} style={{ left: 90, top: 340 }} label="Dr. Menon · hold fn" />
     <Callout at={230} color={C.lav400} style={{ left: 90, top: 330 }}>
       New tasks added, the registrar call stopped
@@ -218,7 +176,7 @@ export const Rounds: React.FC = () => (
 // ─── 6. Walk-in ─────────────────────────────────────────────────────────────
 export const WalkIn: React.FC = () => (
   <Stage hue="mint">
-    <SceneTitle n="04" eyebrow="OPD front desk" title="The counter types the way it talks. The record comes out clean." color={C.mint400} />
+    <SceneTitle n="03" eyebrow="OPD front desk" title="The counter types the way it talks. The record comes out clean." color={C.mint400} />
     <Callout at={250} color={C.blush500} style={{ left: 90, top: 330 }}>
       Red flag found by Pulse Flow, not typed
     </Callout>
@@ -250,7 +208,7 @@ const Stamp: React.FC<{ at: number }> = ({ at }) => {
 };
 export const Pharmacy: React.FC = () => (
   <Stage hue="mint">
-    <SceneTitle n="05" eyebrow="OPD to pharmacy" title="Signed in OPD, moved along in chat." color={C.mint400} />
+    <SceneTitle n="04" eyebrow="OPD to pharmacy" title="Signed in OPD, moved along in chat." color={C.mint400} />
     <div style={{ position: "absolute", left: 90, top: 340, transform: "scale(0.8)", transformOrigin: "top left" }}>
       <DictationCard eyebrow="OPD E-PRESCRIPTION · GEN-002" title="Dictate the prescription" text={L.rxDictation} start={20} cps={60} width={900} height={210} status="Wispr Flow" button="Sign with HPR" />
     </div>
@@ -275,6 +233,46 @@ export const Pharmacy: React.FC = () => (
     />
   </Stage>
 );
+
+// ─── 5. From the live run ───────────────────────────────────────────────────
+const LIVE = [
+  { src: "telegram/tg-handover.png", group: "Lotus Ward", label: "Dr. Rahul's handover, structured: bed 21 flagged on its vitals" },
+  { src: "telegram/tg-rounds.png", group: "Lotus Ward", label: "Dr. Menon's rounds become a draft plan" },
+  { src: "telegram/tg-escalations.png", group: "Lotus Escalations", label: "PG refused, consultant approved, emergency alert" },
+  { src: "telegram/tg-opd.png", group: "Lotus OPD Desk", label: "Anjali's Hinglish walk-in gets a token" },
+  { src: "telegram/tg-pharmacy.png", group: "Lotus Pharmacy & Lab", label: "The order moves to preparing, then ready" },
+];
+export const LIVE_PER = 105;
+export const LIVE_FRAMES = LIVE.length * LIVE_PER + 40;
+export const LiveRun: React.FC = () => {
+  const frame = useCurrentFrame();
+  return (
+    <Stage hue="powder">
+      <SceneTitle n="05" eyebrow="From the live run" title="The same story, as it happened in Telegram." color="#7fb2f0" />
+      {LIVE.map((l, i) => {
+        const a = i * LIVE_PER;
+        const last = i === LIVE.length - 1;
+        const op = interpolate(frame, [a, a + 12, a + LIVE_PER, a + LIVE_PER + 12], [0, 1, 1, last ? 1 : 0], clamp);
+        const z = interpolate(frame, [a, a + LIVE_PER + 12], [1, 1.04], clamp);
+        return (
+          <React.Fragment key={l.src}>
+            <div style={{ position: "absolute", right: 80, top: 110, width: 1120, height: 860, display: "grid", placeItems: "center", opacity: op }}>
+              <div style={{ borderRadius: 24, overflow: "hidden", background: "#17212b", padding: 18, boxShadow: "0 50px 140px -30px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.1)", transform: `scale(${z})` }}>
+                <div style={{ fontFamily: SANS, fontSize: 18, fontWeight: 600, color: "#e7e5f5", padding: "2px 6px 12px" }}>{l.group} · Telegram</div>
+                <Img src={staticFile(l.src)} style={{ display: "block", maxWidth: 1080, maxHeight: 760, borderRadius: 12 }} />
+              </div>
+            </div>
+            <Sequence from={a} durationInFrames={last ? LIVE_PER + 40 : LIVE_PER} layout="none">
+              <Callout at={6} color="#7fb2f0" style={{ left: 90, top: 380 }}>
+                {l.label}
+              </Callout>
+            </Sequence>
+          </React.Fragment>
+        );
+      })}
+    </Stage>
+  );
+};
 
 // ─── 8–9. The web app ───────────────────────────────────────────────────────
 interface Shot {
@@ -341,7 +339,6 @@ export const WEB_DESKS_FRAMES = DESK_SHOTS.length * WEB_PER + 50;
 // ─── 9. Under the hood ──────────────────────────────────────────────────────
 const AGENTS = [
   { name: "lotus-ward-scribe", tools: "submit_handover · submit_rounds · approve_handover_note" },
-  { name: "lotus-ward-coordinator", tools: "ward_followups · ward_board · complete_task" },
   { name: "lotus-opd-desk", tools: "register_walk_in · opd_queue · list_departments" },
   { name: "lotus-fulfilment", tools: "pharmacy_queue · update_pharmacy_order · update_lab_order" },
 ];
@@ -376,9 +373,9 @@ export const UnderTheHood: React.FC<{ consoleShot?: string }> = ({ consoleShot }
             height={560}
             title="Switch · rooms and agents (local server)"
             lines={[
-              { at: 70, text: "Pulse Flow MCP server · 15 tools · one hospital per agent", color: C.mint400 },
-              { at: 120, text: "room  Lotus Ward          → ward-scribe, ward-coordinator" },
-              { at: 135, text: "room  Lotus Escalations   → ward-coordinator, pulse-flow-events" },
+              { at: 70, text: "Pulse Flow MCP server · 14 tools · one hospital per agent", color: C.mint400 },
+              { at: 120, text: "room  Lotus Ward          → ward-scribe, pulse-flow-events" },
+              { at: 135, text: "room  Lotus Escalations   → ward-scribe, opd-desk, pulse-flow-events" },
               { at: 150, text: "room  Lotus OPD Desk      → opd-desk" },
               { at: 165, text: "room  Lotus Pharmacy & Lab → fulfilment" },
               { at: 195, text: "Every tool call: actor → role check → clinical rules → audit log", color: C.lav400 },

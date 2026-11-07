@@ -1,7 +1,6 @@
 // What people said and what the agents answered, copied from the live Telegram take on 7 Nov 2026
-// (Switch room history). Two exceptions, both marked: the handover's first words name the day team
-// instead of a colleague who isn't in the demo, and the coordinator's reminder and escalation use
-// the wording of its earlier live run, because its session didn't answer the check in this take.
+// (Switch room history). One exception: the handover's first words name the day team instead of a
+// colleague who isn't in the demo.
 
 export const RAHUL = "Dr. Rahul Verma";
 export const MENON = "Dr. Suresh Menon";
@@ -18,13 +17,6 @@ export const L = {
     "📝 Bed 7 · Meera Iyer\nS: DKA resolved, sugars 140–180 on basal-bolus, taking orally well.\nR: Discharge after Menon sir's round.\nReply \"approve 7\", \"approve 21\", \"approve all\" or \"discard 7\".",
   critAlert: "🔴 Critical: Bed 21, Fatima Khan. BP at 2 AM was 80 by 50, pulse 104.\nFrom Dr. Rahul Verma's handover. The SBAR draft is waiting for a doctor to approve it in the ward room.",
   scribeEsc: "🔴 Bed 21 · Fatima Khan — BP 80/50 and pulse 104 at 2 AM, handed over as stable.\nDraft is waiting for a doctor's approval in the ward room.",
-
-  nudge0700: "@lotus-ward-coordinator 07:00 check: 1 late task.",
-  remind: "Dr. Rahul, 1 thing from the night:\n⏰ ICU-2 Vikram Singh: STAT repeat ABG and lactate, due 6 AM, 1 hour late.\nReply \"done ICU-2\" when the ABG is done.",
-  nudge0800: "@lotus-ward-coordinator 08:00 check: 1 late task.",
-  escalate: "Dr. Menon, still open after a reminder to Dr. Rahul:\n⏰ ICU-2 Vikram Singh: STAT repeat ABG and lactate, due 6 AM.",
-  rahulDone: "@lotus-ward-coordinator ICU-2 ABG and lactate done, sample sent to lab",
-  coordDone: "✅ ICU-2 Vikram Singh: ABG and lactate, done by Dr. Rahul Verma.",
 
   rounds:
     "@lotus-ward-scribe ICU-2 rounds: BP better at 96 by 60 on norad 0.05. MAP is fine, so no need to call the ICU registrar. Wean off norad by 12 noon and start RT feeds.",

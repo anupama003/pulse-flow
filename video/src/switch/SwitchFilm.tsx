@@ -4,7 +4,7 @@ import { linearTiming, springTiming, TransitionSeries, type TransitionPresentati
 import { fade } from "@remotion/transitions/fade";
 import { slide } from "@remotion/transitions/slide";
 import { wipe } from "@remotion/transitions/wipe";
-import { FollowUp, Groups, Handover, Open, Outro, Pharmacy, Rounds, UnderTheHood, WalkIn, WEB_DESKS_FRAMES, WEB_WARD_FRAMES, WebDesks, WebWard } from "./scenes";
+import { Groups, LIVE_FRAMES, LiveRun, Handover, Open, Outro, Pharmacy, Rounds, UnderTheHood, WalkIn, WEB_DESKS_FRAMES, WEB_WARD_FRAMES, WebDesks, WebWard } from "./scenes";
 
 // Pulse Flow on Switch: a ~2 minute product demo with music and no narration (voice goes on top).
 
@@ -15,10 +15,10 @@ const SCENES: { C: React.FC; frames: number }[] = [
   { C: Open, frames: 170 },
   { C: Groups, frames: 230 },
   { C: Handover, frames: 450 },
-  { C: FollowUp, frames: 600 },
   { C: Rounds, frames: 540 },
   { C: WalkIn, frames: 400 },
   { C: Pharmacy, frames: 540 },
+  { C: LiveRun, frames: LIVE_FRAMES },
   { C: WebWard, frames: WEB_WARD_FRAMES },
   { C: WebDesks, frames: WEB_DESKS_FRAMES },
   { C: () => <UnderTheHood consoleShot={CONSOLE_SHOT} />, frames: 330 },

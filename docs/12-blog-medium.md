@@ -1,14 +1,13 @@
 <!--
 Publishing notes (delete before posting)
 - Medium/Substack: upload each image where its ![...] line is. Files are in docs/assets/blog/.
-- Images marked [YOU CAPTURE] are Telegram screenshots only you can take, from a real run.
 - Tags (Medium allows 5): Switch, AI Agents, Telegram, Healthcare, Hackathon
 - Replace every [TODO] before publishing.
 -->
 
 # Pulse Flow: AI agents inside a hospital's Telegram groups, built on Switch
 
-*How we used Switch, Claude Code and MCP to put four agents into a hospital's ward, front-desk and pharmacy groups, and what we learned about Switch along the way. It's written for anyone opening Switch for the first time.*
+*How we used Switch, Claude Code and MCP to put three agents into a hospital's ward, front-desk and pharmacy groups, and what we learned about Switch along the way. It's written for anyone opening Switch for the first time.*
 
 **Code:** [github.com/anupama003/pulse-flow](https://github.com/anupama003/pulse-flow) · **Demo video:** [TODO link] · Built for WeMakeDevs' **Flip the Switch** hackathon.
 
@@ -30,7 +29,7 @@ We kept the research short, and kept it to India.
 
 **Most beds are in smaller hospitals.** A 2024 industry report found that hospitals with fewer than 200 beds hold over 90% of India's hospital beds. These hospitals usually don't have an IT team or a large software budget. They do have a phone in every pocket and a group for every ward.
 
-So we set ourselves a constraint. The hospital keeps its chat app. Pulse Flow joins the groups, does the follow-up work, and turns the important messages into records a doctor approves.
+So we set ourselves a constraint. The hospital keeps its chat app. Pulse Flow joins the groups, does the paperwork, and turns the important messages into records a doctor approves.
 
 ## What Pulse Flow puts in the groups
 
@@ -39,10 +38,9 @@ We ran Pulse Flow on Telegram, with four groups for a fictional 5-bed demo ward 
 | Telegram group | Agent | What it does |
 |---|---|---|
 | **Lotus Ward** | `lotus-ward-scribe` | Turns a dictated handover, or a consultant's rounds feedback, into one structured note per bed (SBAR: Situation, Background, Assessment, Recommendation). Flags critical patients. Files a doctor's approval. |
-| **Lotus Ward** and **Lotus Escalations** | `lotus-ward-coordinator` | Works like a charge nurse who follows up. Reminds the resident on duty about a late task. If it's still not done at the next check, it tells the consultant. |
 | **Lotus OPD Desk** | `lotus-opd-desk` | Registers walk-ins from a chat message, gives a token, and escalates red flags like chest pain. |
 | **Lotus Pharmacy & Lab** | `lotus-fulfilment` | Moves medicine and lab orders along ("GEN-002 ready") as the pharmacist who said it. |
-| all four | `pulse-flow-events` | Not an AI. This is Pulse Flow itself, posting critical patients, emergencies, signed prescriptions and the coordinator's wake-up checks. |
+| all four | `pulse-flow-events` | Not an AI. This is Pulse Flow itself, posting critical patients, emergencies and signed prescriptions. |
 
 ![Same Telegram group. Different outcome.](assets/blog/diagram-before-after.png)
 
@@ -55,7 +53,7 @@ We had never used Switch before this hackathon. Here is the model that finally m
 - **Server.** Everything lives on a Switch server. Switch Console can start one on your own computer ("Set up a server on this computer"), or you can join a team's server. Ours ran locally on a laptop.
 - **Room.** A room is where people and agents talk. On Telegram, each group you add the Switch bot to becomes a room. People in the group become room members.
 - **Bridge.** The bridge connects a chat app to rooms. The Telegram adapter dials out to Telegram, so you don't need to open a port. When someone posts, the bridge posts that message into the room through a "puppet" member that stands in for the person. Replies go back the same way.
-- **Agent.** An agent is a room member that can act. You bring your own: Claude Code, Codex and others are supported. Our four agents are plain Claude Code sessions.
+- **Agent.** An agent is a room member that can act. You bring your own: Claude Code, Codex and others are supported. Our three agents are plain Claude Code sessions.
 - **Switch Console.** The desktop app that runs your agents' sessions on your machine, each in its own folder, using your own Claude Code login. Switch never sees your model credentials.
 - **Addressing.** An agent sees every message in its rooms, but it acts only when it is addressed: you start the message with `@` and its name. Each agent also has an addressing setting that says who may address it (`owner_only`, `owner_and_owner_agents` or `anyone`).
 - **Agent protocol.** Anything can be an agent, not just an LLM. You register once over HTTP, get an API key, and then post messages or open a WebSocket for events. Pulse Flow uses this to post into rooms.
@@ -64,7 +62,7 @@ Here is the path of one message, from Telegram to an agent and back:
 
 ![How Switch carries one Telegram message to an agent and back](assets/blog/diagram-switch.png)
 
-The part that changed how we designed Pulse Flow is step 4. **An @mention is the API.** A person waking an agent and our backend waking an agent are the same thing: a message in a room that starts with the agent's name.
+The part that changed how we designed Pulse Flow is step 4. **An @mention is the whole interface.** An agent sees everything in its room, but it acts only on a message that starts with its name. In our first test, a doctor's "approve all" without the tag did nothing at all.
 
 ## Your first hour with Switch
 
@@ -97,7 +95,7 @@ Telegram first shows a "Worked for 9s" card, the steps the agent took, and then 
 !help                 every command Switch accepts
 ```
 
-**8. Move to a template once it works.** Clicking through Switch Console is fine for one agent. For four agents, use a template file (next section).
+**8. Move to a template once it works.** Clicking through Switch Console is fine for one agent. For three agents, use a template file (next section).
 
 ## How we plugged Pulse Flow into Switch
 
@@ -105,7 +103,7 @@ Pulse Flow is a Next.js and PostgreSQL hospital app. It connects to Switch in fo
 
 ![How a message becomes a record](assets/blog/diagram-architecture.png)
 
-### 1. One template describes all four agents
+### 1. One template describes all three agents
 
 A Switch template is a YAML file you import in Switch Console. It has parameters, which show up as a form, and the agents to create. Ours, shortened:
 
@@ -118,16 +116,16 @@ params:
   escalations_room: { type: room, label: Escalations group }
 
 agents:
-  - name: "{team}-ward-coordinator"
-    description: Chases late tasks and unapproved notes, and escalates what stays stuck
+  - name: "{team}-ward-scribe"
+    description: Turns dictated shift handovers into SBAR drafts and gets them approved
     addressing: anyone
     provider: claude
-    directory: "{pulse_flow_dir}/switch/agents/ward-coordinator"
+    directory: "{pulse_flow_dir}/switch/agents/ward-scribe"
     join: ["{ward_room}", "{escalations_room}"]
     instructions: |
-      You are the ward coordinator: the charge nurse who chases. You never decide
-      anything clinical, never approve notes, and never mark a task done unless a
-      person says it is.
+      You are the ward scribe. When a doctor posts a handover, call submit_handover
+      with actor = their chat name and dictation = their exact words. Never drop or
+      soften anything the doctor said.
       ...
 ```
 
@@ -138,22 +136,22 @@ On Slack or Discord, a template can create the rooms too. On Telegram it can't, 
 Switch Console starts each agent's Claude Code session in its own `directory`. That folder is where we control what the agent knows and what it may do. `npm run switch:setup` writes three files into each one:
 
 ```
-switch/agents/ward-coordinator/
+switch/agents/opd-desk/
   CLAUDE.md                 the rules every Pulse Flow agent follows
   .mcp.json                 starts Pulse Flow's tool server, limited to this agent's tools
   .claude/settings.json     pre-approves only those tools
 ```
 
-The coordinator's tool allowlist is three tools long:
+The OPD desk's tool allowlist is three tools long:
 
 ```json
 {
   "enableAllProjectMcpServers": true,
   "permissions": {
     "allow": [
-      "mcp__pulse-flow__ward_followups",
-      "mcp__pulse-flow__ward_board",
-      "mcp__pulse-flow__complete_task"
+      "mcp__pulse-flow__opd_queue",
+      "mcp__pulse-flow__list_departments",
+      "mcp__pulse-flow__register_walk_in"
     ]
   }
 }
@@ -163,7 +161,7 @@ This matters in a shared room. Nobody is sitting at the laptop to approve a tool
 
 ### 3. The agents talk to Pulse Flow over MCP
 
-Pulse Flow exposes 15 tools through an MCP server over stdio. Each agent starts its own copy, with environment variables that pin it to one hospital and one set of tools:
+Pulse Flow exposes 14 tools through an MCP server over stdio. Each agent starts its own copy, with environment variables that pin it to one hospital and one set of tools:
 
 ```ts
 // switch/mcp/server.ts (shortened)
@@ -232,65 +230,39 @@ export function toSwitchRequest(cfg: SwitchConfig, m: RoomMessage) {
 
 `postToRoom()` never throws. If the chat is down, a handover or a signature must still succeed. Every attempt, whether sent, simulated (Switch not configured) or failed, is written to the audit log.
 
-### Waking one agent from code
-
-The coordinator has no schedule of its own. Every 15 minutes, `npm run switch:nudge` asks Pulse Flow what is late. If anything is, Pulse Flow posts one line into the ward room that starts with the coordinator's name:
-
-```ts
-export function buildWardNudge(f: WardFollowups, coordinator: string): RoomMessage | null {
-  if (!f.overdueTasks.length) return null; // quiet wards get no message
-  return {
-    event: "WARD_NUDGE", room: "ward",
-    itemIds: f.overdueTasks.map((t) => t.taskId), // so the next check knows who was already reminded
-    text: `@${coordinator} ${istHhmm(new Date(f.checkedAt))} check: ${plural(f.overdueTasks.length, "late task")}.`,
-  };
-}
-```
-
-The message people see is one readable line. The details, such as task ids and how many times each item was already chased, stay out of the chat. The coordinator fetches them itself with its `ward_followups` tool.
-
-Our first version of this message had no `@` at the start. It was posted, everyone could read it, and the coordinator did nothing. That one character is the whole integration.
-
 ## One night on Lotus Ward
 
-Our demo follows a normal night in a mid-sized private hospital in India. One PG resident covers the ward overnight and also takes calls from casualty. In the morning a day PG takes over the ward. The consultant runs OPD first and comes to the ward for rounds afterwards. Three of us played the consultant, the night PG and the day PG.
+Our demo follows a normal night in a mid-sized private hospital in India. One PG resident covers the ward overnight and also takes calls from casualty. The consultant runs OPD in the morning and comes to the ward for rounds afterwards. Three of us played the consultant (Dr. Suresh Menon), the night PG (Dr. Rahul Verma) and the front desk (Anjali Desai), each from our own phone. Every screenshot below is from that live run.
 
-**The handover.** Dr. Rahul, the night PG, speaks his handover to Dr. Priya into the Lotus Ward group with Wispr Flow. Handovers are given in English, but in the clipped style of an Indian ward: short forms like "pyelo", "inj" and "KFT", numbers read out as "80 by 50", and "Menon sir's round". For one patient he says she is stable and, in the same breath, that her BP at 2 AM was 80 by 50.
+**The handover.** Dr. Rahul speaks his handover into the Lotus Ward group with Wispr Flow. Handovers are given in English, but in the clipped style of an Indian ward: short forms like "pyelo", "inj" and "KFT", numbers read out as "80 by 50", and "Menon sir's round". For one patient he says she is stable and, in the same breath, that her BP at 2 AM was 80 by 50.
 
-The scribe calls `submit_handover` with `actor` set to Rahul and posts one short draft per bed. That patient's draft comes back marked critical. The model didn't decide that: Pulse Flow's vitals rule read 80/50 and overrode "stable". Lotus Escalations gets an alert at the same moment, so Dr. Menon sees it without scrolling through the night's messages.
+The scribe calls `submit_handover` with `actor` set to Rahul and posts one draft per bed. Bed 21 comes back marked critical. The model didn't decide that: Pulse Flow's vitals rule read 80/50 and overrode "stable", and the scribe says so ("Called stable against those vitals — confirm").
 
-![\[YOU CAPTURE\] Telegram, Lotus Ward: Rahul's handover and the scribe's drafts, bed 21 marked critical](assets/blog/tg-handover.png)
+![Telegram, Lotus Ward: the scribe's drafts from Dr. Rahul's handover, bed 21 flagged critical](assets/blog/tg-handover.png)
 
-**Taking over.** Dr. Priya reads the drafts and types `@lotus-ward-scribe Approve 21 and 7`. Both notes become part of the record under her name, and their tasks appear on the ward screen. Only doctors can approve; anyone else who tries through the agent is refused by Pulse Flow, not by the prompt.
+Lotus Escalations gets an alert at the same moment, so Dr. Menon sees it without scrolling through the night's messages. The drafts stay drafts until a doctor approves them with `@lotus-ward-scribe Approve 21 and 7`.
 
-![\[YOU CAPTURE\] Telegram, Lotus Ward: Dr. Priya approves the handover](assets/blog/tg-approve.png)
+**Rounds, and who may approve.** After OPD, Dr. Menon dictates his rounds feedback for ICU-2: BP is better, so the call to the ICU registrar isn't needed; wean the noradrenaline by noon; start RT feeds. The scribe merges it into the patient's care plan as a draft: two new tasks, one task stopped.
 
-**A late task.** This is the part a sister in-charge normally does by walking around with the register. ICU-2 had a STAT blood gas due at 6 AM. At 7:00, Pulse Flow's check finds it late and wakes the coordinator, which reminds the PG on duty:
+![Telegram, Lotus Ward: Dr. Menon's rounds and the scribe's draft plan](assets/blog/tg-rounds.png)
 
-> **pulse-flow-events:** @lotus-ward-coordinator 07:00 check: 1 late task.
->
-> **lotus-ward-coordinator:** Dr. Rahul, ICU-2 Vikram Singh: STAT repeat ABG and lactate was due at 6 AM, now 1 hour late.
-> Reply "done ICU-2" once it's done.
+Dr. Rahul tries to approve it. Pulse Flow refuses, because a rounds plan needs the consultant's sign-off, and the scribe says why. Dr. Menon approves it, the registrar task stops and the new tasks go live on the ward.
 
-Rahul is in casualty and doesn't reply. At 8:00 the task is still open, so the coordinator doesn't remind him again. It tells the consultant in Lotus Escalations, before he starts OPD:
+![Telegram, Lotus Escalations: the PG's approval refused, the consultant's accepted, then the emergency alert from the front desk](assets/blog/tg-escalations.png)
 
-> **lotus-ward-coordinator:** Dr. Menon, ICU-2 Vikram Singh: STAT repeat ABG and lactate, due 6 AM, still not done an hour after the reminder.
+**The OPD counter.** Anjali types the walk-in the way the counter talks, in Hinglish: "Ramesh Patil, 54 saal, male. Subah se seene mein dard hai aur pasina aa raha hai." The OPD desk registers him in General Medicine, gives token GEN-005 and tells her to send him straight in. Pulse Flow re-checks the red flags itself and posts an emergency alert in Escalations, even though nobody typed "emergency".
 
-![\[YOU CAPTURE\] Telegram, Lotus Escalations: the coordinator's message to Dr. Menon](assets/blog/tg-escalation.png)
+![Telegram, Lotus OPD Desk: the Hinglish walk-in and the token](assets/blog/tg-opd.png)
 
-Dr. Priya does the ABG and replies `ICU-2 ABG and lactate done, sample sent to lab`. The coordinator closes the task in her name.
+**The pharmacy.** Dr. Menon signs Ramesh Kumar's prescription in the OPD console with his HPR ID. Pulse Flow posts it in Lotus Pharmacy & Lab, and the order moves along by chat: `GEN-002 preparing`, then `GEN-002 ready, send the patient to counter 2`.
 
-That is the whole rule: remind the PG first, and tell the consultant only if the task is still not done at the next check. Code decides what is late and how many times it was already chased. The agent decides how to word it and whom to address.
+![Telegram, Lotus Pharmacy & Lab: the order moved to preparing, then ready](assets/blog/tg-pharmacy.png)
 
-We timed both steps from the room history on a live run:
-
-![The coordinator, measured on a live run](assets/blog/chart-coordinator.png)
-
-**Rounds, the OPD counter and the pharmacy.** After OPD, Dr. Menon dictates his rounds feedback for ICU-2 in English: BP is better, so the call to the ICU registrar isn't needed; wean the noradrenaline by noon; start RT feeds. The scribe turns it into a care-plan draft that only he can approve; if Rahul tries, he is refused. At the OPD counter, the front desk registers a 54-year-old man with chest pain and sweating since morning, typed in Hinglish the way the counter talks. He gets a token, and Escalations gets an emergency alert even though nobody typed "emergency". In the pharmacy group, the pharmacist moves an order along with `GEN-002 preparing`, then `GEN-002 ready, send the patient to counter 2`.
+Each reply above shows Switch's "Worked for 20s" card with the tool calls behind it. One of them even shows a failed call that the agent recovered from. We kept those in: they are the most honest view of what an agent did.
 
 **The record.** Every action shows up in the web app under **Audit → Switch rooms**, under the person it was done for, with the agent as the route.
 
-![\[YOU CAPTURE after the take\] Audit → Switch rooms: the 07:00 and 08:00 checks and each lookup the coordinator made](assets/blog/app-audit-switch.png)
+![Audit → Switch rooms: each alert and each agent action, under a person](assets/blog/app-audit-switch.png)
 
 ## The same morning without Switch
 
@@ -300,12 +272,10 @@ We wanted the difference to be easy to check, so Pulse Flow says plainly when Sw
 |---|---|---|
 | Header | **Switch on** | **Switch off** |
 | Critical patient in a handover | Posted to the escalations group on Telegram | "Not sent: Switch is off. Only people looking at this screen will know." |
-| Late STAT test at 7:00 | The coordinator reminds the PG on duty by name | The check lists it, and nothing else happens |
-| Still open at 8:00 | The consultant is told | Still sitting on the ward screen |
 | Approving from the ward group, the OPD counter or the pharmacy | Done in chat, under the person who asked | Not possible: the agents don't exist without Switch |
 | Audit → Switch rooms | Posts marked "sent" | Posts marked "not sent (Switch off)" |
 
-Without Switch, Pulse Flow is still a working hospital web app: dictation, SBAR drafts, approvals and queues all work. What disappears is everything that happens *to* people instead of waiting *for* them: the alert that reaches the consultant's phone, the follow-up, and the escalation. That is the part Switch adds, and it's the part a hospital actually needs at 6 AM.
+Without Switch, Pulse Flow is still a working hospital web app: dictation, SBAR drafts, approvals and queues all work. What disappears is everything that happens *to* people instead of waiting *for* them: the alert that reaches the consultant's phone, the approval from the ward group, the walk-in from the counter, the order moved from the pharmacy. That is the part Switch adds.
 
 ## The safety model: agents act for people
 
@@ -331,7 +301,7 @@ export async function runAgentTool(t: AgentTool, rawArgs: unknown, opts: { facil
 
 On top of that:
 
-1. **Least privilege, twice.** Each agent gets only its own tools (the coordinator has 3 of 15 and can't approve anything), and every tool checks the person's permission as well.
+1. **Least privilege, twice.** Each agent gets only its own tools (the OPD desk has 3 of 14 and can't touch a ward note), and every tool checks the person's permission as well.
 2. **AI drafts, doctors decide.** Notes stay drafts until a named doctor approves them in the group. Agents never sign prescriptions. That stays in the web app, with the consultant's HPR ID.
 3. **Rules run after the model.** Whatever the model wrote, fixed rules re-read the vitals. If systolic BP is under 90 (adjusted for children), MAP under 65, SpO₂ under 92% or potassium 6 or more, the patient is critical, whatever words the doctor used:
 
@@ -344,7 +314,7 @@ On top of that:
 4. **One hospital per agent.** Each agent's tool server is pinned to one facility. It can't find another branch's staff or read its patients.
 5. **Everything is logged** under the person, with the agent as the route (`switch:ward-scribe`), following India's DPDP Act.
 
-The short version: **code owns the facts, agents own the follow-through.** Pulse Flow decides what is late, what is critical and who may approve, the same way every time, with tests. The agent decides how to say it to a tired person and when to follow up.
+The short version: **code owns the facts, agents own the follow-through.** Pulse Flow decides what is critical and who may approve, the same way every time, with tests. The agent decides how to say it to a tired person.
 
 ## Chat names are not staff names
 
@@ -376,12 +346,12 @@ We wrote the structuring prompt for how tired people actually talk: run-on sente
 A live Switch room is slow to test against, so most of our checks run without one:
 
 ```bash
-npm test               # typecheck + 57 unit tests: clinical rules, prescriptions, Switch messages
+npm test               # typecheck + 48 unit tests: clinical rules, prescriptions, Switch messages
 npm run test:db        # 6 database tests: tokens, tenancy, audit
-npm run test:agents    # 13 agent tests against a seeded database and the real MCP server
+npm run test:agents    # 11 agent tests against a seeded database and the real MCP server
 ```
 
-The agent tests start the actual MCP server over stdio, the same way Claude Code does, and call tools as different people. For example, they check that a pharmacist can't approve a note through an agent, and that a check Pulse Flow sent can read the follow-ups but can't close a task. When we did need the live room, we read its history straight from the server (`GET /agents/{id}/rooms/{room}/history`) to time the agents' replies.
+The agent tests start the actual MCP server over stdio, the same way Claude Code does, and call tools as different people. For example, they check that a pharmacist can't approve a note through an agent, and that a PG can't approve the consultant's rounds plan. When we did need the live room, we read its history straight from the server (`GET /agents/{id}/rooms/{room}/history`) to check every reply.
 
 ![Pharmacy queue, fed by signed prescriptions](assets/blog/app-pharmacy.png)
 
@@ -396,7 +366,7 @@ The agent tests start the actual MCP server over stdio, the same way Claude Code
 ## What it doesn't do yet
 
 - **It runs on one machine.** Switch Console, the agents and Pulse Flow all ran on one laptop for the demo. A hospital would need that machine to stay on, with a backup.
-- **The agent's timing is judgment, not a rule.** The facts it acts on are fixed and tested. When it chooses to follow up is not.
+- **The agent's wording is judgment, not a rule.** The facts it acts on are fixed and tested. How it phrases a reply is not.
 - **It's a prototype, not a medical device.** All people and patients are fictional, and the national health ID (ABHA) integration is a sandbox.
 
 ## Try it
@@ -413,7 +383,7 @@ Then follow [switch/TELEGRAM.md](https://github.com/anupama003/pulse-flow/blob/m
 ## What we'd tell another team
 
 1. **Start where people already are.** The best tool for a night shift is one nobody has to open.
-2. **Treat an @mention as an API.** It's how people wake agents in Switch, and it's how our backend does too.
+2. **Teach the @mention on day one.** Every message to an agent starts with its name, typed out. Telegram's suggestions only offer the one bot, so people have to learn it.
 3. **Make every agent action belong to a person.** Asking "who asked?" is what made the agents safe enough for a hospital group.
 4. **Keep facts in code.** Let the agent handle the conversation, and let tested code decide what is critical and who may approve.
 

@@ -10,8 +10,8 @@ import { loadStaff, type SessionUser } from "../staff";
 // agent's facility. PULSE_FLOW_CHAT_HANDLES maps chat handles that don't look like the staff name:
 //   PULSE_FLOW_CHAT_HANDLES="anupama=u-menon,night-pg=u-rahul"
 // A mapping can be limited to one agent with "@agent", so one person can play a different role in
-// another group (the day PG on the ward, the front desk at the OPD counter):
-//   PULSE_FLOW_CHAT_HANDLES="teammate=u-priya,teammate=u-anjali@opd-desk,teammate=u-farhan@fulfilment"
+// another group (the front desk at the OPD counter, the pharmacist in the pharmacy group):
+//   PULSE_FLOW_CHAT_HANDLES="teammate=u-anjali,teammate=u-farhan@fulfilment"
 // Production would bind chat accounts to staff accounts through the hospital's SSO instead.
 
 const normalize = (s: string) =>

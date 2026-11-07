@@ -1,4 +1,4 @@
-# The ward WhatsApp group, with agents in it: building Pulse Flow on Switch
+# The ward chat group, with agents in it: building Pulse Flow on Switch
 
 *Cover image: `docs/assets/pulse-flow-cover.png`. In-post image: `docs/assets/switch-rooms-audit.jpg`.*
 
@@ -28,18 +28,18 @@ It worked, but it was another app to open at 3 AM. The ward group was still wher
 
 That maps onto a hospital almost one to one.
 
-## The design: four rooms, four agents, one rule
+## The design: four rooms, three agents, one rule
 
 | Room | Who's in it | What happens |
 |---|---|---|
-| `#ward` | PGs, consultants, **ward-scribe**, **ward-coordinator** | Handover or a consultant's rounds feedback posted (dictated with Wispr Flow) → SBAR drafts → a doctor replies "approve all"; the coordinator chases what's late |
-| `#escalations` | consultants, ward-scribe, ward-coordinator, **opd-desk** | Critical patients, emergency walk-ins, stuck tasks and the 8 AM ward brief arrive here |
-| `#opd-desk` | front desk, opd-desk | "walk-in Ramesh 54, chest pain" → token, room, doctor |
-| `#fulfilment` | pharmacy, lab, **fulfilment** | Signed prescriptions arrive; "DER-001 ready" moves the order |
+| `#ward` | PGs, consultants, **ward-scribe** | Handover or a consultant's rounds feedback posted (dictated with Wispr Flow) → SBAR drafts → a doctor replies "approve 21 and 7" |
+| `#escalations` | consultants, PGs, ward-scribe, **opd-desk** | Critical patients and emergency walk-ins arrive here |
+| `#opd-desk` | front desk, opd-desk | "walk-in: Ramesh Patil, 54 saal, male. Subah se seene mein dard hai…" → token, room, doctor |
+| `#fulfilment` | pharmacy, lab, **fulfilment** | Signed prescriptions arrive; "GEN-002 ready, send the patient to counter 2" moves the order |
 
 We ran it on **Telegram**, because that's closest to the WhatsApp groups hospitals actually use: one group per room, one Switch bot in each, and you address an agent by starting your message with its name.
 
-Plus one more agent with no brain at all: **pulse-flow-events**, which is just Pulse Flow posting into rooms when something happens (a critical patient, a signed prescription, an emergency at the desk), whether it happened in the web app or through another agent.
+Plus one more agent with no brain at all: **pulse-flow-events**, which is just Pulse Flow posting into rooms when something happens (a critical patient or an emergency at the desk in escalations, a signed prescription in fulfilment), whether it happened in the web app or through another agent.
 
 The one rule: **agents act *for* people, never *as* themselves.** Every tool call names the person whose message asked for it, and that person's role decides what happens. If the receptionist types "approve all" in the ward room, the agent tries, Pulse Flow refuses (front desk can't approve clinical notes), the refusal is logged, and the agent explains who can. That one rule is what makes it safe to put an agent in a clinical chat room.
 
@@ -47,19 +47,17 @@ The one rule: **agents act *for* people, never *as* themselves.** Every tool cal
 
 ## Agents that do the work people do, not the decisions people make
 
-Flip the Switch asks for agents that get real work done, and it's tempting in healthcare to read that as "the agent decides". We went the other way: the agents take the *clerical* work off people and leave every clinical call with a doctor. Two of them show the difference best.
+Flip the Switch asks for agents that get real work done, and it's tempting in healthcare to read that as "the agent decides". We went the other way: the agents take the *clerical* work off people and leave every clinical call with a doctor. The consultant's rounds show the difference best.
 
-**The consultant's rounds.** On a ward round, the consultant says "ICU-2: wean the norad by noon, stop the 6 AM ABG, start feeds", and a resident spends the next hour writing it up and fixing the task list. In the ward group, the consultant says it once. The scribe merges it into that patient's care plan as a draft: new tasks, stopped tasks (only ones that really exist in the plan), an updated SBAR. Only the consultant can approve a rounds draft. A PG trying to is refused by Pulse Flow, not by the prompt.
+**The consultant's rounds.** On a ward round, the consultant says "ICU-2: MAP is fine, so no need to call the ICU registrar. Wean off norad by 12 noon and start RT feeds", and a resident spends the next hour writing it up and fixing the task list. In the ward group, the consultant says it once. The scribe merges it into that patient's care plan as a draft: new tasks, stopped tasks (only ones that really exist in the plan), an updated SBAR. Only the consultant can approve a rounds draft. A PG trying to is refused by Pulse Flow, not by the prompt. In our run the scribe told him: "ICU-2 · Vikram Singh — not approved. The draft is a rounds note from Dr. Suresh Menon, and rounds orders need the consultant's sign-off."
 
-**The ward coordinator.** This is the agent that works without being asked. Every 15 minutes Pulse Flow checks what's late: tasks past the time the doctor dictated ("repeat ABG at 6 AM", parsed into a real deadline), STAT orders not done in 30 minutes, notes no doctor has approved. If anything is, Pulse Flow's events agent posts a follow-up check *addressed to the coordinator by name*, which is how one agent wakes another in Switch. The coordinator then does what a charge nurse does: asks the PG on duty by name, and if the same item comes back on the next check, escalates to that patient's consultant in the escalations group. When someone replies "done", it closes the task as them. It never approves anything and never decides that something is done.
-
-The split matters: Pulse Flow computes *what* is late (deterministic, tested, the same every time), and the agent decides *how* to chase it in a human way. That's the pattern I'd reuse anywhere: let code own the facts, and let agents own the follow-through.
+The split matters: Pulse Flow computes *what* is critical and *who* may approve (deterministic, tested, the same every time), and the agent turns what people say into the right tool call and tells them what happened. That's the pattern I'd reuse anywhere: let code own the facts, and let agents own the conversation.
 
 ## How it's built (and how you'd build your own)
 
 If you're new to Switch, here are the three pieces you need for any "agents that do real work" project. None of them are hospital-specific.
 
-**1. Give the agents tools, not access.** The agents are Claude Code sessions that Switch Console runs in a working directory. I gave each directory a `.mcp.json` that starts Pulse Flow's own [MCP](https://modelcontextprotocol.io) tool server, so the agent's only way to touch hospital data is a dozen narrow tools: `ward_board`, `submit_handover`, `approve_handover_note`, `register_walk_in`, `update_pharmacy_order` and so on. Each tool has a strict input schema, and each agent only gets its own subset (the fulfilment agent has no idea `approve_handover_note` exists). `npm run switch:setup` writes those directories, so a fresh clone is one command away.
+**1. Give the agents tools, not access.** The agents are Claude Code sessions that Switch Console runs in a working directory. I gave each directory a `.mcp.json` that starts Pulse Flow's own [MCP](https://modelcontextprotocol.io) tool server, so the agent's only way to touch hospital data is 14 narrow tools: `ward_board`, `submit_handover`, `approve_handover_note`, `register_walk_in`, `update_pharmacy_order` and so on. Each tool has a strict input schema, and each agent only gets its own subset (the fulfilment agent has no idea `approve_handover_note` exists). `npm run switch:setup` writes those directories, so a fresh clone is one command away.
 
 ```json
 { "mcpServers": { "pulse-flow": {
