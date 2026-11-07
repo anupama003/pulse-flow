@@ -114,6 +114,8 @@ Restart `npm run dev`. Open **Audit → Switch rooms** as Deepak (admin) to watc
 
 ## 8. Run the demo: who types what
 
+**Each person's exact lines, on one page: [DEMO-LINES.md](./DEMO-LINES.md).** Send it to your teammates.
+
 **The one rule in chat:** to talk to an agent, start the message with `@` and its name. Everything else is ordinary chat between people, and agents ignore it.
 
 | Who's who | |
@@ -138,8 +140,8 @@ npm run dev
 - **Lotus Escalations** gets one 🔴 line from Pulse Flow about bed 21.
 
 **Scene 2: who may approve** (Lotus Ward)
-- **Anjali types:** `@lotus-ward-scribe approve all` → **scribe:** front desk can't approve clinical notes.
-- **You type:** `@lotus-ward-scribe approve all` → **scribe:** ✅ both approved, under your name.
+- **Anjali types:** `@lotus-ward-scribe approve 21` → **scribe:** front desk can't approve clinical notes.
+- **You type:** `@lotus-ward-scribe approve 21 and 7` → **scribe:** ✅ both approved, under your name. (Not "approve all": that would also approve P-4's waiting note, which scene 3 escalates.)
 
 **Scene 3: the coordinator chases** (terminal, then Lotus Ward)
 - **You run:** `npm run switch:nudge -- --at 06:45`
@@ -153,6 +155,7 @@ npm run dev
 - **You run** `npm run switch:nudge -- --at 07:15` (half an hour later; repeating 06:45 makes the coordinator wait, since Rahul had no time to act). P-4's note is still waiting, so the coordinator tells the consultant in **Lotus Escalations**:
   > Dr. Menon, still open after a reminder to Dr. Rahul:
   > 📝 P-4 Aarav Sharma: handover note waiting for approval.
+- **You type** in Lotus Ward: `@lotus-ward-scribe approve P-4`.
 
 **Scene 4: consultant rounds** (Lotus Ward)
 - **You type:**
@@ -167,7 +170,7 @@ npm run dev
 
 **Scene 6: pharmacy** (web app, then Lotus Pharmacy & Lab)
 - In the web app, `/opd` as Dr. Rao → call next → dictate → sign. **Pulse Flow posts** 🧾 in Lotus Pharmacy & Lab.
-- **Pharmacist types:** `@lotus-fulfilment DER-001 ready` → `✅ DER-001 ready.`
+- **Pharmacist types:** `@lotus-fulfilment DER-001 preparing`, then `@lotus-fulfilment DER-001 ready` → `✅ DER-001 ready.` (DER-001 starts queued, so it must be prepared first.)
 
 **Scene 7: the record** — web app `/audit` → **Switch rooms** as Deepak: every agent action under the person it acted for.
 

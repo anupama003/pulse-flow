@@ -2,17 +2,116 @@
 
 # Pulse Flow
 
-**Voice-first care, from handover to pharmacy.** Doctors, front-desk staff and patients speak. Pulse Flow structures what they say, a human approves it, and it flows to the ward, the OPD queue, pharmacy, lab and the patient's WhatsApp.
+**The hospital's chat group, with agents in it that keep patients from falling through the cracks.**
 
-*(Formerly SBAR Sync. SBAR is still the clinical handover framework we structure notes into.)*
+Doctors keep talking in the chat app they already use. Pulse Flow's agents turn what they say into approved patient records, chase what's late, and leave an audit trail. Built on [Switch](https://www.switchagents.ai) for the WeMakeDevs *Flip the Switch* hackathon.
 
-## Flip the Switch: the hospital's chat rooms, with agents in them
+## The problem
 
-Hospitals already coordinate in WhatsApp groups. Pulse Flow puts **four agents into the team's own chat app through [Switch](https://www.switchagents.ai)** (Telegram, Slack, Discord, Mattermost, Teams): a ward scribe that turns a dictated handover or a consultant's rounds feedback into SBAR drafts a doctor approves in the room, a ward coordinator that chases late tasks and escalates what stays stuck, an OPD desk that registers walk-ins and escalates emergencies, and a fulfilment runner for pharmacy and lab. Every agent acts *for* a named staff member under that person's role, and every action lands in the DPDP audit log. **Setup, safety model and a 3-minute script: [switch/README.md](switch/README.md). Telegram with a 3-person team: [switch/TELEGRAM.md](switch/TELEGRAM.md).**
+Hospitals in India coordinate in WhatsApp and Telegram groups. At 3 AM the night resident hands over twelve patients as a long voice note or a wall of text. Somewhere in it is "bed 21 stable, BP 80/50 at 2". The day team reads "stable" and moves on.
 
-## Judges: running it in 3 commands
+Nobody did anything wrong; the channel did:
 
-You need Node 20.11+ and Docker running.
+- **It doesn't understand medicine.** A critical blood pressure looks the same as a lunch order.
+- **Nothing is tied to a patient.** The handover lives in message 34, not in the chart.
+- **Nobody follows up.** A 6 AM blood test that wasn't done just sits there.
+- **There's no record.** Who approved what, and when, is lost in scrollback. That matters under India's DPDP Act.
+
+Handovers are where communication failures cluster: they're involved in over half of the communication failures behind serious hospital incidents ([review](https://pmc.ncbi.nlm.nih.gov/articles/PMC9923540)). Sources and caveats: [the blog post](docs/10-blog-flip-the-switch.md).
+
+## The idea: don't make doctors leave the chat; put the agents in it
+
+[Switch](https://docs.switchagents.ai/switch-rooms/getting-started) turns each group in a team's chat app (Telegram, Slack, Discord, Mattermost, Teams) into a **room** where people and AI agents work together. Pulse Flow puts four agents into four hospital groups:
+
+| Group | Agent | What it does |
+|---|---|---|
+| **Ward** | `ward-scribe` | Turns a dictated handover or the consultant's rounds into one structured note per bed (SBAR: Situation, Background, Assessment, Recommendation), flags critical patients, and files a doctor's approval. |
+| **Ward** + **Escalations** | `ward-coordinator` | The charge nurse who chases. Asks the resident on duty about late tasks; tells the consultant if nothing happened after a reminder. |
+| **OPD Desk** | `opd-desk` | Registers walk-ins by chat, gives a token, and escalates red flags like chest pain. |
+| **Pharmacy & Lab** | `fulfilment` | Moves medicine and lab orders along ("DER-001 ready") as the pharmacist who said it. |
+| all four | `pulse-flow-events` | Not an AI: Pulse Flow itself, posting 🔴 critical patients, 🚨 emergencies and 🧾 signed prescriptions into the right group as they happen. |
+
+## What it looks like on Telegram
+
+The coordinator's messages are copied from a live run; the scribe's are shortened.
+
+```
+Lotus Ward
+  Dr. Rahul (night PG):  @lotus-ward-scribe Bed 21 Fatima Khan, pyelonephritis with AKI,
+                         she's stable, BP 80 by 50 at 2 AM, heart rate 104 … Bed 7 Meera Iyer …
+  ward-scribe:           🔴 Bed 21 · Fatima Khan: critical, BP 80/50 (said "stable"; the vitals rule overrode it)
+                         Bed 7 · Meera Iyer: …   Reply "approve 21", "approve all" or "discard 21".
+  Anjali (front desk):   @lotus-ward-scribe approve 21
+  ward-scribe:           Front desk can't approve clinical notes.            ← refused by Pulse Flow, not the prompt
+  Dr. Menon (consultant): @lotus-ward-scribe approve 21 and 7
+  ward-scribe:           ✅ Both approved, under Dr. Menon's name.
+
+  Pulse Flow:            @lotus-ward-coordinator 06:45 check: 1 late task, 1 note waiting for approval.
+  ward-coordinator:      Dr. Rahul, 2 things from the night:
+                         ⏰ ICU-2 Vikram Singh: STAT repeat ABG and lactate, due 6 AM, 45 min late.
+                         📝 P-4 Aarav Sharma: handover note waiting for approval.
+                         Reply "done ICU-2" when the ABG is done, or "approve P-4".
+  Dr. Rahul:             @lotus-ward-coordinator done ICU-2
+  ward-coordinator:      ✅ ICU-2 ABG and lactate, done by Dr. Rahul.
+
+Lotus Escalations  (half an hour later, P-4 still waiting)
+  ward-coordinator:      Dr. Menon, still open after a reminder to Dr. Rahul:
+                         📝 P-4 Aarav Sharma: handover note waiting for a doctor's approval …
+```
+
+Every one of those actions is now in the patient's record and in **Audit → Switch rooms**, under the person who asked.
+
+## How it works
+
+```
+ Telegram / Slack / … groups ──── Switch (rooms, membership, who can address which agent)
+            │ "@lotus-ward-scribe …"
+            ▼
+ Claude Code agents (run by Switch Console on the hospital's machine)
+            │ MCP tools: submit_handover, approve_handover_note, ward_followups, complete_task, …
+            │ every call names the person who asked ("actor")
+            ▼
+ Pulse Flow (Next.js + PostgreSQL)
+   1. resolve the person → their role decides what's allowed (RBAC, one hospital per agent)
+   2. deterministic clinical rules re-check every vital, whatever the AI said
+   3. write a DRAFT; nothing is live until a named doctor approves it
+   4. audit-log the action under the person, with the agent as the route
+            │
+            ▼ room events (critical patient, emergency, Rx signed, follow-up check)
+ back into the right group as pulse-flow-events
+```
+
+**Code owns the facts; agents own the follow-through.** Pulse Flow computes what is late, what is critical and who may approve, the same way every time, with tests. The agents decide how to say it to a person and when to chase.
+
+### The safety model
+
+1. **Agents act *for* people, never *as* themselves.** Every tool takes the chat name of the person who asked; that person's role decides. A receptionist can't approve a note through an agent any more than in the web app.
+2. **AI drafts, clinicians decide.** Notes stay drafts until a doctor approves them. Prescriptions are only signed in the web app, with the consultant's HPR ID.
+3. **Rules after the model.** If the doctor says "stable" but the systolic BP is under 90, SpO₂ under 92 % or K⁺ 6 or more, the patient is flagged critical anyway ([`lib/sbar/clinical-rules.ts`](lib/sbar/clinical-rules.ts)).
+4. **Least privilege twice.** Each agent gets only its own tools, and every tool checks the person's role.
+5. **Everything is audit-logged**, built for India's DPDP Act. Each agent is pinned to one hospital.
+
+Full design: [switch/README.md](switch/README.md).
+
+### Beyond the chat
+
+The agents sit on a complete hospital web app that shares the same code paths:
+
+| URL | What |
+|---|---|
+| `/` | IPD ward: shift handover by voice, approvals, live rounds |
+| `/opd` | OPD console: call next patient, dictate the prescription, sign with HPR ID |
+| `/front-desk` | Walk-in registration by voice |
+| `/pharmacy` · `/lab` | Queues fed by signed prescriptions |
+| `/audit` | DPDP access log, WhatsApp outbox, **Switch rooms** (every agent action) |
+| `/queue?f=lotus-ridge` | Waiting-room TV |
+| `/book?f=lotus-ridge` | Public voice booking with ABHA (sandbox) |
+
+Switch between the 12 demo staff with the name pill at the top right.
+
+## Try it
+
+You need Node 20.11+ and Docker.
 
 ```bash
 git clone https://github.com/anupama003/pulse-flow.git && cd pulse-flow
@@ -20,49 +119,59 @@ npm run setup             # checks Docker, creates .env, installs, starts Postgr
 npm run dev               # → http://localhost:3000
 ```
 
-No API key is needed to look around: every screen works, and dictation falls back to manual entry. For AI structuring in the web app, add `GEMINI_API_KEY` (free at [aistudio.google.com](https://aistudio.google.com/apikey)) or `ANTHROPIC_API_KEY` + `LLM_PROVIDER=anthropic` to `.env`. **The Switch agents need no key of ours**: they structure handovers with your own Claude Code, and Pulse Flow's rules re-check the result.
+No API key is needed to look around; dictation falls back to manual entry. For AI structuring in the web app, add `GEMINI_API_KEY` (free at [aistudio.google.com](https://aistudio.google.com/apikey)) or `ANTHROPIC_API_KEY` + `LLM_PROVIDER=anthropic` to `.env`. The Switch agents need no key of ours: they use your own Claude Code, and Pulse Flow's rules re-check the result.
 
-Check everything works without a Switch server or an AI key:
+**Check it works, without a Switch server or an AI key:**
 
 ```bash
-npm test                  # typecheck + 55 unit tests (clinical rules, e-Rx, WhatsApp, Switch)
+npm test                  # typecheck + 57 unit tests: clinical rules, e-Rx, WhatsApp, Switch messages
 npm run test:db           # 6 integration tests: tokens, tenancy, audit, ABHA, WhatsApp outbox
-npm run test:agents       # 13 integration tests: agents acting for people, RBAC, rounds, coordinator, real MCP server
+npm run test:agents       # 13 integration tests: agents acting for people, RBAC, rounds, coordinator, the real MCP server
 ```
 
-| URL | What |
+**Run the agents in chat:**
+
+- Telegram, with a 3-person team, step by step: [switch/TELEGRAM.md](switch/TELEGRAM.md)
+- What each person types during the demo: [switch/DEMO-LINES.md](switch/DEMO-LINES.md)
+- Slack, Discord, Mattermost or Teams: [switch/README.md](switch/README.md)
+
+## What's real and what's simulated
+
+| Real | Simulated |
 |---|---|
-| `/` | IPD ward: shift brain dump, approvals, live rounds |
-| `/opd` | OPD console: call next, dictate the e-Rx, sign with HPR ID |
-| `/front-desk` | Walk-in registration by voice, check-in |
-| `/pharmacy` · `/lab` | Fulfilment queues fed by signed prescriptions |
-| `/audit` | DPDP access log, WhatsApp outbox, **Switch rooms** (agent actions + room alerts) |
-| `/queue?f=lotus-ridge` | Waiting-room TV |
-| `/book?f=lotus-ridge` | Public voice booking + ABHA (sandbox) |
+| Switch rooms on Telegram, four Claude Code agents, the MCP tool server | ABHA / ABDM (sandbox accounts) |
+| Role checks, tenancy, clinical rules, drafts and approvals, the audit log | WhatsApp to patients (dry-run until credentials are set) |
+| PostgreSQL data for one demo hospital (Lotus Ridge) | All people, patients and identifiers are fictional |
 
-Switch between the 12 demo staff with the name pill at the top right.
+## Repo map
 
-**Run, scripts, personas and the full UI test checklist: [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md).**
-**Step-by-step test flows (A–K): [docs/08-test-flows.md](docs/08-test-flows.md).**
-
-## Scripts at a glance
-
-`npm run dev` · `build` · `start` · `setup` · `db:up` · `db:down` · `db:reset` · `db:seed` · `db:studio` · `typecheck` · `test` · `test:rules` (30 unit tests) · `test:switch` (25) · `test:db` (6 integration tests) · `test:agents` (13) · `switch:setup` · `switch:register` · `switch:nudge` · `switch:templates` · `switch:mcp`
+| Path | What |
+|---|---|
+| [`switch/`](switch/) | Switch templates, agent rules, setup scripts, the follow-up checker (`npm run switch:nudge`) |
+| [`lib/agents/`](lib/agents/) | The MCP tools the agents call, and how a chat name becomes a staff member |
+| [`lib/ward/`](lib/ward/) · [`lib/opd/`](lib/opd/) | Handover, rounds, follow-ups, walk-ins: shared by the web app and the agents |
+| [`lib/sbar/clinical-rules.ts`](lib/sbar/clinical-rules.ts) | The deterministic vitals rules |
+| [`server/services/Switch.ts`](server/services/Switch.ts) | Room messages Pulse Flow posts, and how they're sent |
+| [`app/`](app/) | The Next.js web app |
+| [`prisma/`](prisma/) | Schema and the demo hospital seed |
 
 ## Docs
 
 | | |
 |---|---|
-| Launch post | [docs/01-substack-launch-post.md](docs/01-substack-launch-post.md) |
-| IPD architecture (handovers) | [docs/02-architecture.md](docs/02-architecture.md) |
-| Platform architecture: tenancy, RBAC, DPDP audit, WhatsApp, ABDM | [docs/07-platform-architecture.md](docs/07-platform-architecture.md) |
-| Clinical validation & edge cases | [docs/03-clinical-validation.md](docs/03-clinical-validation.md) |
-| 24-hour IPD journey | [docs/04-user-journey.md](docs/04-user-journey.md) |
+| Flip the Switch blog post (problem, design, sources) | [docs/10-blog-flip-the-switch.md](docs/10-blog-flip-the-switch.md) |
+| Demo video script and submission answers | [docs/11-flip-the-switch-submission.md](docs/11-flip-the-switch-submission.md) |
 | Pulse Flow on Switch: agents, rooms, safety model | [switch/README.md](switch/README.md) |
-| Flip the Switch blog post | [docs/10-blog-flip-the-switch.md](docs/10-blog-flip-the-switch.md) |
-| Demo video script + submission answers | [docs/11-flip-the-switch-submission.md](docs/11-flip-the-switch-submission.md) |
+| Platform architecture: tenancy, RBAC, DPDP audit, WhatsApp, ABDM | [docs/07-platform-architecture.md](docs/07-platform-architecture.md) |
+| IPD architecture (handovers) | [docs/02-architecture.md](docs/02-architecture.md) |
+| Clinical validation and edge cases | [docs/03-clinical-validation.md](docs/03-clinical-validation.md) |
+| A 24-hour IPD journey | [docs/04-user-journey.md](docs/04-user-journey.md) |
+| Developer guide: scripts, personas, UI test checklist | [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) |
+| Test flows A–K | [docs/08-test-flows.md](docs/08-test-flows.md) |
 | Dictation test scripts | [docs/05-wispr-test-scripts.md](docs/05-wispr-test-scripts.md) · [docs/06-opd-test-scripts.md](docs/06-opd-test-scripts.md) |
 
-**Stack:** Switch (agents in Slack/Discord/Telegram/Mattermost/Teams) · MCP · Next.js 15 (App Router, Server Actions) · React 19 · Tailwind v4 · Framer Motion · Prisma 6 / PostgreSQL · Gemini (`gemini-3.8-flash` / `gemini-3.5-flash-lite`) or Claude (`claude-opus-5-5`), switchable in `.env` · pdf-lib.
+**Scripts:** `dev` · `build` · `start` · `setup` · `db:up` · `db:down` · `db:reset` · `db:seed` · `db:studio` · `typecheck` · `test` · `test:rules` (30) · `test:switch` (27) · `test:db` (6) · `test:agents` (13) · `switch:setup` · `switch:register` · `switch:nudge` · `switch:templates` · `switch:mcp`
 
-> Prototype only, not a medical device. All people, facilities and identifiers are fictional. ABHA/ABDM is simulated and WhatsApp runs in dry-run mode until credentials are set. AI output is a draft that a clinician must approve and sign.
+**Stack:** Switch · MCP · Claude Code · Next.js 15 (App Router, Server Actions) · React 19 · Tailwind v4 · Prisma 6 / PostgreSQL · Gemini or Claude for web-app structuring, switchable in `.env` · pdf-lib.
+
+> Prototype only, not a medical device. All people, facilities and identifiers are fictional. AI output is a draft that a clinician must approve and sign.
