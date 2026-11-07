@@ -20,7 +20,7 @@ flowchart LR
 | ③ Rules | Arithmetic: thresholds and the last value of each vital | [`clinical-rules.ts`](../lib/sbar/clinical-rules.ts) `validateDraft()` |
 | ④ Human | Final clinical judgement | [`DraftCard.tsx`](../components/DraftCard.tsx), `approveDraft()` in [`store.ts`](../lib/store.ts) |
 
-Run the tests (no API key needed): `npm run test:rules`. All 12 pass, including the exact vitals from [demo script 2](05-wispr-test-scripts.md#2-the-messy-edge-case).
+Run the tests (no API key needed): `npm run test:rules`. All of them pass, including the exact vitals from the demo handover ("stable" with BP 80/50).
 
 ---
 

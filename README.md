@@ -16,7 +16,7 @@ Nobody did anything wrong; the channel did:
 - **Nothing is tied to a patient.** The handover lives in message 34, not in the chart.
 - **There's no record.** Who approved what, and when, is lost in scrollback. That matters under India's DPDP Act.
 
-Handovers are where communication failures cluster: they're involved in over half of the communication failures behind serious hospital incidents ([review](https://pmc.ncbi.nlm.nih.gov/articles/PMC9923540)). Sources and caveats: [the blog post](docs/10-blog-flip-the-switch.md).
+Handovers are where communication failures cluster: they're involved in over half of the communication failures behind serious hospital incidents ([review](https://pmc.ncbi.nlm.nih.gov/articles/PMC9923540)). More on the problem and the build: [the blog post](docs/12-blog-medium.md).
 
 ## The idea: don't make doctors leave the chat; put the agents in it
 
@@ -173,17 +173,12 @@ npm run test:agents       # 11 integration tests: agents acting for people, RBAC
 
 | | |
 |---|---|
-| Medium / Substack post: how Switch works, first-time setup, the build | [docs/12-blog-medium.md](docs/12-blog-medium.md) |
-| Flip the Switch blog post (problem, design, sources) | [docs/10-blog-flip-the-switch.md](docs/10-blog-flip-the-switch.md) |
-| Demo video script and submission answers | [docs/11-flip-the-switch-submission.md](docs/11-flip-the-switch-submission.md) |
+| Blog post: how Switch works, first-time setup, the build, the live run | [docs/12-blog-medium.md](docs/12-blog-medium.md) |
 | Pulse Flow on Switch: agents, rooms, safety model | [switch/README.md](switch/README.md) |
-| Platform architecture: tenancy, RBAC, DPDP audit, WhatsApp, ABDM | [docs/07-platform-architecture.md](docs/07-platform-architecture.md) |
+| Running it on Telegram with three people | [switch/TELEGRAM.md](switch/TELEGRAM.md) · [what each person types](switch/DEMO-LINES.md) |
+| Platform architecture: tenancy, RBAC, DPDP audit, ABDM | [docs/07-platform-architecture.md](docs/07-platform-architecture.md) |
 | IPD architecture (handovers) | [docs/02-architecture.md](docs/02-architecture.md) |
 | Clinical validation and edge cases | [docs/03-clinical-validation.md](docs/03-clinical-validation.md) |
-| A 24-hour IPD journey | [docs/04-user-journey.md](docs/04-user-journey.md) |
-| Developer guide: scripts, personas, UI test checklist | [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) |
-| Test flows A–K | [docs/08-test-flows.md](docs/08-test-flows.md) |
-| Dictation test scripts | [docs/05-wispr-test-scripts.md](docs/05-wispr-test-scripts.md) · [docs/06-opd-test-scripts.md](docs/06-opd-test-scripts.md) |
 
 **Scripts:** `dev` · `build` · `start` · `setup` · `db:up` · `db:down` · `db:reset` · `db:seed` · `db:studio` · `typecheck` · `test` · `test:rules` (30) · `test:switch` (18) · `test:db` (6) · `test:agents` (11) · `switch:setup` · `switch:register` · `switch:templates` · `switch:mcp`
 

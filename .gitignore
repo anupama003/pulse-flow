@@ -5,3 +5,8 @@ node_modules
 next-env.d.ts
 *.tsbuildinfo
 switch/agents/
+
+# Local-only: the demo film project, editor config and an archive of working notes
+video/
+.claude/
+.local-archive/

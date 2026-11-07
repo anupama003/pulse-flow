@@ -171,7 +171,6 @@ Then send `!reset-all-agents` in all four groups, and have each person post once
 
 **Scene 5: the record:** sidebar → **Audit log** (opens as Deepak, facility admin) → **Switch rooms**: every agent action under the person it acted for.
 
-A full practice run with timings: [PRACTICE-TAKE.md](./PRACTICE-TAKE.md).
 
 ## If something doesn't work
 
