@@ -165,10 +165,10 @@ One task from the night is late: ICU-2's STAT blood gas, due at 6 AM.
 - **OPD desk replies:** token, room and doctor, and "send him straight in". **Lotus Escalations** gets an emergency alert from Pulse Flow, though nobody typed "emergency".
 
 **Scene 5: pharmacy** (web app, then Lotus Pharmacy & Lab)
-- In the web app, `/opd` as Dr. Rao → call next → dictate → sign. **Pulse Flow posts** the signed prescription in Lotus Pharmacy & Lab.
+- In the web app, click **OPD console** in the sidebar (your own OPD, GEN-002 already in consultation) → dictate → sign. **Pulse Flow posts** the signed prescription in Lotus Pharmacy & Lab.
 - **Farhan (member 3) types:** `@lotus-fulfilment DER-001 preparing`, then `@lotus-fulfilment DER-001 ready, send the patient to counter 2` → DER-001 ready.
 
-**Scene 6: the record** — web app `/audit` → **Switch rooms** as Deepak: every agent action under the person it acted for.
+**Scene 6: the record** — click **Audit log** in the sidebar (opens as Deepak) → **Switch rooms**: every agent action under the person it acted for.
 
 ## If something doesn't work
 

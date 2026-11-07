@@ -140,9 +140,11 @@ You'll see: the updated plan (new tasks, the registrar call stopped) and a reque
 @lotus-ward-scribe Approve ICU-2
 ```
 
-**Scene 5, web app: sign a prescription.** In `/opd`, switch to Dr. Arvind Rao (name pill, top right) → **Call next** → dictate → **Sign**. Pulse Flow posts the signed prescription in Lotus Pharmacy & Lab. Then Farhan moves the order.
+**Scene 5, web app: sign a prescription.** Click **OPD console** in the left sidebar. It opens your own OPD (General Medicine) with Ramesh Kumar, GEN-002, already in consultation. Dictate the prescription → **Sign**. Pulse Flow posts the signed prescription in Lotus Pharmacy & Lab. Then Farhan moves the order.
 
-**Scene 6, web app: the record.** `/audit` → **Switch rooms**, as Deepak (facility admin): every agent action, under the person it acted for.
+**Scene 6, web app: the record.** Click **Audit log** in the sidebar (it opens as Deepak, the facility admin) → **Switch rooms**: every agent action, under the person it acted for.
+
+Every page is in the left sidebar. A page your current role can't open says "as …" under its name, and one click switches to that colleague: Pharmacy as Farhan, Diagnostics as Kavya, Front desk as Anjali.
 
 ---
 
