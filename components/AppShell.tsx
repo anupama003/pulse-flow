@@ -51,7 +51,10 @@ export default function AppShell({
   const entries = MODULES.flatMap((m): { href: string; label: string; via: PersonaUser | null }[] => {
     if (can(me.role, m.perm)) return [{ href: m.href, label: m.label, via: null }];
     // Prefer the colleague whose own home is this module (the pharmacist for Pharmacy), not the admin.
-    const via = colleagues.find((u) => homeFor(u.role) === m.href) ?? colleagues.find((u) => can(u.role, m.perm));
+    const via =
+      colleagues.find((u) => u.role !== "ADMIN" && homeFor(u.role) === m.href) ??
+      colleagues.find((u) => homeFor(u.role) === m.href) ??
+      colleagues.find((u) => can(u.role, m.perm));
     return via ? [{ href: m.href, label: m.label, via }] : [];
   });
   const openAs = (href: string, userId: string) =>
