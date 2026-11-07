@@ -142,3 +142,18 @@ html[data-splash-seen] #pf-splash { display: none; }
 /* Progress bar */
 .pf-progress { width: 0; animation: pf-progress linear forwards; }
 @keyframes pf-progress { to { width: 100%; } }
+
+/* Light UI: no near-black fills. Active tabs, primary buttons and token chips use soft lavender
+   with dark text. Unlayered, so it wins over the utility classes on the same element. */
+.bg-ink {
+  background-color: var(--color-lavender-200);
+  color: var(--color-ink);
+}
+.bg-ink [class*="text-white"],
+.bg-ink[class*="text-white"] {
+  color: var(--color-ink);
+}
+.hover\:bg-ink:hover {
+  background-color: var(--color-lavender-200);
+  color: var(--color-ink);
+}
