@@ -1,6 +1,6 @@
 # Demo lines: what each person types
 
-One page per person. Send each teammate their section; they can keep it open on their phone while recording.
+One page per person. Send each teammate their section; they can keep it open on their phone while recording. For a full rehearsal with every check, use [PRACTICE-TAKE.md](./PRACTICE-TAKE.md).
 
 Doctors speak English, as handovers and consultant dictation must be, with the short forms Indian wards use (pyelo, inj, KFT, RT feeds). The front desk speaks the way the OPD counter does, in Hinglish. Speak the lines with Wispr Flow or paste them. Bed numbers and order ids are kept explicit so the agents can't misread them.
 
@@ -99,14 +99,14 @@ You'll see: a token, room and doctor, and "send him straight in". Lotus Escalati
 **Scene 5, after the host signs a prescription.** One message at a time:
 
 ```
-@lotus-fulfilment DER-001 preparing
+@lotus-fulfilment GEN-002 preparing
 ```
 
 ```
-@lotus-fulfilment DER-001 ready, send the patient to counter 2
+@lotus-fulfilment GEN-002 ready, send the patient to counter 2
 ```
 
-You'll see: DER-001 moved to preparing, then to ready.
+You'll see: GEN-002 (the prescription the host just signed) moved to preparing, then to ready.
 
 ---
 

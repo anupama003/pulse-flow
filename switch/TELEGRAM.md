@@ -166,7 +166,7 @@ One task from the night is late: ICU-2's STAT blood gas, due at 6 AM.
 
 **Scene 5: pharmacy** (web app, then Lotus Pharmacy & Lab)
 - In the web app, click **OPD console** in the sidebar (your own OPD, GEN-002 already in consultation) → dictate → sign. **Pulse Flow posts** the signed prescription in Lotus Pharmacy & Lab.
-- **Farhan (member 3) types:** `@lotus-fulfilment DER-001 preparing`, then `@lotus-fulfilment DER-001 ready, send the patient to counter 2` → DER-001 ready.
+- **Farhan (member 3) types:** `@lotus-fulfilment GEN-002 preparing`, then `@lotus-fulfilment GEN-002 ready, send the patient to counter 2` → GEN-002 ready.
 
 **Scene 6: the record** — click **Audit log** in the sidebar (opens as Deepak) → **Switch rooms**: every agent action under the person it acted for.
 

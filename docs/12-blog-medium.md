@@ -41,7 +41,7 @@ We ran Pulse Flow on Telegram, with four groups for a fictional 5-bed demo ward 
 | **Lotus Ward** | `lotus-ward-scribe` | Turns a dictated handover, or a consultant's rounds feedback, into one structured note per bed (SBAR: Situation, Background, Assessment, Recommendation). Flags critical patients. Files a doctor's approval. |
 | **Lotus Ward** and **Lotus Escalations** | `lotus-ward-coordinator` | Works like a charge nurse who follows up. Reminds the resident on duty about a late task. If it's still not done at the next check, it tells the consultant. |
 | **Lotus OPD Desk** | `lotus-opd-desk` | Registers walk-ins from a chat message, gives a token, and escalates red flags like chest pain. |
-| **Lotus Pharmacy & Lab** | `lotus-fulfilment` | Moves medicine and lab orders along ("DER-001 ready") as the pharmacist who said it. |
+| **Lotus Pharmacy & Lab** | `lotus-fulfilment` | Moves medicine and lab orders along ("GEN-002 ready") as the pharmacist who said it. |
 | all four | `pulse-flow-events` | Not an AI. This is Pulse Flow itself, posting critical patients, emergencies, signed prescriptions and the coordinator's wake-up checks. |
 
 ![Same Telegram group. Different outcome.](assets/blog/diagram-before-after.png)
@@ -286,7 +286,7 @@ We timed both steps from the room history on a live run:
 
 ![The coordinator, measured on a live run](assets/blog/chart-coordinator.png)
 
-**Rounds, the OPD counter and the pharmacy.** After OPD, Dr. Menon dictates his rounds feedback for ICU-2 in English: BP is better, so the call to the ICU registrar isn't needed; wean the noradrenaline by noon; start RT feeds. The scribe turns it into a care-plan draft that only he can approve; if Rahul tries, he is refused. At the OPD counter, the front desk registers a 54-year-old man with chest pain and sweating since morning, typed in Hinglish the way the counter talks. He gets a token, and Escalations gets an emergency alert even though nobody typed "emergency". In the pharmacy group, the pharmacist moves an order along with `DER-001 preparing`, then `DER-001 ready, send the patient to counter 2`.
+**Rounds, the OPD counter and the pharmacy.** After OPD, Dr. Menon dictates his rounds feedback for ICU-2 in English: BP is better, so the call to the ICU registrar isn't needed; wean the noradrenaline by noon; start RT feeds. The scribe turns it into a care-plan draft that only he can approve; if Rahul tries, he is refused. At the OPD counter, the front desk registers a 54-year-old man with chest pain and sweating since morning, typed in Hinglish the way the counter talks. He gets a token, and Escalations gets an emergency alert even though nobody typed "emergency". In the pharmacy group, the pharmacist moves an order along with `GEN-002 preparing`, then `GEN-002 ready, send the patient to counter 2`.
 
 **The record.** Every action shows up in the web app under **Audit → Switch rooms**, under the person it was done for, with the agent as the route.
 

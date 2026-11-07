@@ -28,7 +28,7 @@ Handovers are where communication failures cluster: they're involved in over hal
 | **Ward** | `ward-scribe` | Turns a dictated handover or the consultant's rounds into one structured note per bed (SBAR: Situation, Background, Assessment, Recommendation), flags critical patients, and files a doctor's approval. |
 | **Ward** + **Escalations** | `ward-coordinator` | The charge nurse who chases. Reminds the resident on duty about a late task; tells the consultant if it's still not done at the next check. |
 | **OPD Desk** | `opd-desk` | Registers walk-ins by chat, gives a token, and escalates red flags like chest pain. |
-| **Pharmacy & Lab** | `fulfilment` | Moves medicine and lab orders along ("DER-001 ready") as the pharmacist who said it. |
+| **Pharmacy & Lab** | `fulfilment` | Moves medicine and lab orders along ("GEN-002 ready") as the pharmacist who said it. |
 | all four | `pulse-flow-events` | Not an AI: Pulse Flow itself, posting 🔴 critical patients, 🚨 emergencies and 🧾 signed prescriptions into the right group as they happen. |
 
 ## What it looks like on Telegram

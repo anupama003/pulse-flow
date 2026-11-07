@@ -50,7 +50,7 @@ Cast and setup: [switch/TELEGRAM.md](../switch/TELEGRAM.md). You = **Dr. Suresh 
 | 1:25–1:50 | Terminal: `npm run switch:nudge -- --at 06:45` → **Lotus Ward** | The coordinator asks "Dr. Rahul" by name: ICU-2's STAT ABG is 45 min late. Rahul: "ICU-2 ABG and lactate done" → ✅. Then `--at 07:15`: the draft nobody approved is escalated to you in Escalations. "Nobody asked it to chase. That's the charge nurse's job, done by an agent." |
 | 1:50–2:15 | **Lotus Ward**, you: ICU-2 rounds feedback ("…drop the ICU registrar call, wean norad by noon, start feeds") | A rounds draft only the consultant can approve; approve it and the plan updates on the ward screen. |
 | 2:15–2:35 | **Lotus OPD Desk**, Anjali: chest-pain walk-in | Token issued; 🚨 in Escalations though nobody said "emergency". |
-| 2:35–2:50 | Web `/opd` sign → **Lotus Pharmacy & Lab** 🧾 → "DER-001 ready" | "Pharmacy runs from the same chat." |
+| 2:35–2:50 | Web `/opd` sign → **Lotus Pharmacy & Lab** 🧾 → "GEN-002 ready" | "Pharmacy runs from the same chat." |
 | 2:50–3:00 | `/audit` → Switch rooms | "Every agent action, under the person it acted for. That's what the WhatsApp group never had." |
 
 Before each take: `npm run db:reset`. After the first alert, check **Audit → Switch rooms** shows `sent`, not `simulated`.
