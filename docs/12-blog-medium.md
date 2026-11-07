@@ -7,7 +7,7 @@ Publishing notes (delete before posting)
 
 # Pulse Flow: AI agents inside a hospital's Telegram groups, built on Switch
 
-*How we used Switch, Claude Code and MCP to put three agents into a hospital's ward, front-desk and pharmacy groups, and what we learned about Switch along the way. It's written for anyone opening Switch for the first time.*
+*How I used Switch, Claude Code and MCP to put three agents into a hospital's ward, front-desk and pharmacy groups, and what I learned about Switch along the way. It's written for anyone opening Switch for the first time.*
 
 **Code:** [github.com/anupama003/pulse-flow](https://github.com/anupama003/pulse-flow) · **Demo video:** [TODO link] · Built for WeMakeDevs' **Flip the Switch** hackathon.
 
@@ -17,11 +17,11 @@ A lot of a hospital's day runs through chat groups on doctors' phones. The night
 
 The gaps show up at shift change and at night. A handover says "bed 21 stable, BP 80/50", and nobody notices that 80/50 is not stable. A blood test due at 6 AM depends on someone remembering it. Approvals happen in the chat, but they never reach the patient's record.
 
-We didn't want to give doctors another app to open. Instead, we put agents into the groups they already use. This post covers how we did it with Switch, with the code, the architecture, and the traps we hit.
+I didn't want to give doctors another app to open. Instead, I put agents into the groups they already use. This post covers how I did it with Switch, with the code, the architecture, and the traps I hit.
 
 ## Why this matters in India
 
-We kept the research short, and kept it to India.
+I kept the research short, and kept it to India.
 
 **Resident doctors are already stretched.** In the National Medical Commission's 2024 task force survey of 5,337 postgraduate students, 45% said they work more than 60 hours a week. 56% said they don't get their weekly day off. These are the people writing handovers at 3 AM. Anything that adds typing or another screen makes their night worse.
 
@@ -29,11 +29,11 @@ We kept the research short, and kept it to India.
 
 **Most beds are in smaller hospitals.** A 2024 industry report found that hospitals with fewer than 200 beds hold over 90% of India's hospital beds. These hospitals usually don't have an IT team or a large software budget. They do have a phone in every pocket and a group for every ward.
 
-So we set ourselves a constraint. The hospital keeps its chat app. Pulse Flow joins the groups, does the paperwork, and turns the important messages into records a doctor approves.
+So I set myself a constraint. The hospital keeps its chat app. Pulse Flow joins the groups, does the paperwork, and turns the important messages into records a doctor approves.
 
 ## What Pulse Flow puts in the groups
 
-We ran Pulse Flow on Telegram, with four groups for a fictional 5-bed demo ward and OPD at "Lotus Ridge Hospital":
+I ran Pulse Flow on Telegram, with four groups for a fictional 5-bed demo ward and OPD at "Lotus Ridge Hospital":
 
 | Telegram group | Agent | What it does |
 |---|---|---|
@@ -46,14 +46,14 @@ We ran Pulse Flow on Telegram, with four groups for a fictional 5-bed demo ward 
 
 The rest of this post is about how this works.
 
-## How Switch works, as we understood it
+## How Switch works, as I understood it
 
-We had never used Switch before this hackathon. Here is the model that finally made sense to us, using Switch's own terms.
+I had never used Switch before this hackathon. Here is the model that finally made sense to me, using Switch's own terms.
 
-- **Server.** Everything lives on a Switch server. Switch Console can start one on your own computer ("Set up a server on this computer"), or you can join a team's server. Ours ran locally on a laptop.
+- **Server.** Everything lives on a Switch server. Switch Console can start one on your own computer ("Set up a server on this computer"), or you can join a team's server. Mine ran locally on a laptop.
 - **Room.** A room is where people and agents talk. On Telegram, each group you add the Switch bot to becomes a room. People in the group become room members.
 - **Bridge.** The bridge connects a chat app to rooms. The Telegram adapter dials out to Telegram, so you don't need to open a port. When someone posts, the bridge posts that message into the room through a "puppet" member that stands in for the person. Replies go back the same way.
-- **Agent.** An agent is a room member that can act. You bring your own: Claude Code, Codex and others are supported. Our three agents are plain Claude Code sessions.
+- **Agent.** An agent is a room member that can act. You bring your own: Claude Code, Codex and others are supported. My three agents are plain Claude Code sessions.
 - **Switch Console.** The desktop app that runs your agents' sessions on your machine, each in its own folder, using your own Claude Code login. Switch never sees your model credentials.
 - **Addressing.** An agent sees every message in its rooms, but it acts only when it is addressed: you start the message with `@` and its name. Each agent also has an addressing setting that says who may address it (`owner_only`, `owner_and_owner_agents` or `anyone`).
 - **Agent protocol.** Anything can be an agent, not just an LLM. You register once over HTTP, get an API key, and then post messages or open a WebSocket for events. Pulse Flow uses this to post into rooms.
@@ -62,11 +62,11 @@ Here is the path of one message, from Telegram to an agent and back:
 
 ![How Switch carries one Telegram message to an agent and back](assets/blog/diagram-switch.png)
 
-The part that changed how we designed Pulse Flow is step 4. **An @mention is the whole interface.** An agent sees everything in its room, but it acts only on a message that starts with its name. In our first test, a doctor's "approve all" without the tag did nothing at all.
+The part that changed how I designed Pulse Flow is step 4. **An @mention is the whole interface.** An agent sees everything in its room, but it acts only on a message that starts with its name. In my first test, a doctor's "approve all" without the tag did nothing at all.
 
 ## Your first hour with Switch
 
-If you are opening Switch for the first time, this is the shortest path we found. It assumes Telegram; Slack, Discord, Mattermost and Teams work too.
+If you are opening Switch for the first time, this is the shortest path I found. It assumes Telegram; Slack, Discord, Mattermost and Teams work too.
 
 **1. Install Switch Console and start a server.** Choose "Set up a server on this computer". When it asks, sign in to Claude Code. Your agents are Claude Code sessions, so this is your agents' login, not Switch's.
 
@@ -86,7 +86,7 @@ If you are opening Switch for the first time, this is the shortest path we found
 
 Telegram first shows a "Worked for 9s" card, the steps the agent took, and then the reply. Replies take 5 to 20 seconds; the first one after a reset is slower.
 
-**7. Learn a few room commands.** We used these constantly:
+**7. Learn a few room commands.** I used these constantly:
 
 ```
 !list-agents          which agents are in this room
@@ -97,7 +97,7 @@ Telegram first shows a "Worked for 9s" card, the steps the agent took, and then 
 
 **8. Move to a template once it works.** Clicking through Switch Console is fine for one agent. For three agents, use a template file (next section).
 
-## How we plugged Pulse Flow into Switch
+## How I plugged Pulse Flow into Switch
 
 Pulse Flow is a Next.js and PostgreSQL hospital app. It connects to Switch in four places.
 
@@ -105,7 +105,7 @@ Pulse Flow is a Next.js and PostgreSQL hospital app. It connects to Switch in fo
 
 ### 1. One template describes all three agents
 
-A Switch template is a YAML file you import in Switch Console. It has parameters, which show up as a form, and the agents to create. Ours, shortened:
+A Switch template is a YAML file you import in Switch Console. It has parameters, which show up as a form, and the agents to create. Mine, shortened:
 
 ```yaml
 version: 1
@@ -129,11 +129,11 @@ agents:
       ...
 ```
 
-On Slack or Discord, a template can create the rooms too. On Telegram it can't, because only people can create groups, so our Telegram template only creates the agents and adds them to the groups you pick in the form.
+On Slack or Discord, a template can create the rooms too. On Telegram it can't, because only people can create groups, so my Telegram template only creates the agents and adds them to the groups you pick in the form.
 
 ### 2. Each agent is a folder
 
-Switch Console starts each agent's Claude Code session in its own `directory`. That folder is where we control what the agent knows and what it may do. `npm run switch:setup` writes three files into each one:
+Switch Console starts each agent's Claude Code session in its own `directory`. That folder is where I control what the agent knows and what it may do. `npm run switch:setup` writes three files into each one:
 
 ```
 switch/agents/opd-desk/
@@ -157,7 +157,7 @@ The OPD desk's tool allowlist is three tools long:
 }
 ```
 
-This matters in a shared room. Nobody is sitting at the laptop to approve a tool call at 3 AM, so the agent can only use what we pre-approved. Anything else simply isn't available to it.
+This matters in a shared room. Nobody is sitting at the laptop to approve a tool call at 3 AM, so the agent can only use what I pre-approved. Anything else simply isn't available to it.
 
 ### 3. The agents talk to Pulse Flow over MCP
 
@@ -232,7 +232,7 @@ export function toSwitchRequest(cfg: SwitchConfig, m: RoomMessage) {
 
 ## One night on Lotus Ward
 
-Our demo follows a normal night in a mid-sized private hospital in India. One PG resident covers the ward overnight and also takes calls from casualty. The consultant runs OPD in the morning and comes to the ward for rounds afterwards. Three of us played the consultant (Dr. Suresh Menon), the night PG (Dr. Rahul Verma) and the front desk (Anjali Desai), each from our own phone. Every screenshot below is from that live run.
+The demo follows a normal night in a mid-sized private hospital in India. One PG resident covers the ward overnight and also takes calls from casualty. The consultant runs OPD in the morning and comes to the ward for rounds afterwards. For the demo, three people played the consultant (Dr. Suresh Menon), the night PG (Dr. Rahul Verma) and the front desk (Anjali Desai), each from their own phone. Every screenshot below is from that live run.
 
 **The handover.** Dr. Rahul speaks his handover into the Lotus Ward group with Wispr Flow. Handovers are given in English, but in the clipped style of an Indian ward: short forms like "pyelo", "inj" and "KFT", numbers read out as "80 by 50", and "Menon sir's round". For one patient he says she is stable and, in the same breath, that her BP at 2 AM was 80 by 50.
 
@@ -258,7 +258,7 @@ Dr. Rahul tries to approve it. Pulse Flow refuses, because a rounds plan needs t
 
 ![Telegram, Lotus Pharmacy & Lab: the order moved to preparing, then ready](assets/blog/tg-pharmacy.png)
 
-Each reply above shows Switch's "Worked for 20s" card with the tool calls behind it. One of them even shows a failed call that the agent recovered from. We kept those in: they are the most honest view of what an agent did.
+Each reply above shows Switch's "Worked for 20s" card with the tool calls behind it. One of them even shows a failed call that the agent recovered from. I kept those in: they are the most honest view of what an agent did.
 
 **The record.** Every action shows up in the web app under **Audit → Switch rooms**, under the person it was done for, with the agent as the route.
 
@@ -266,7 +266,7 @@ Each reply above shows Switch's "Worked for 20s" card with the tool calls behind
 
 ## The same morning without Switch
 
-We wanted the difference to be easy to check, so Pulse Flow says plainly when Switch is off. Take Switch out (stop Switch Console, or remove the `SWITCH_*` lines from `.env`), restart the app, and replay the same morning:
+I wanted the difference to be easy to check, so Pulse Flow says plainly when Switch is off. Take Switch out (stop Switch Console, or remove the `SWITCH_*` lines from `.env`), restart the app, and replay the same morning:
 
 | | With Switch | Without Switch |
 |---|---|---|
@@ -316,7 +316,7 @@ The short version: **code owns the facts, agents own the conversation.** Pulse F
 
 This one deserves its own section because it will hit anyone building on Switch. Telegram users show up in Switch as handles like `RahulVerma_2222222222`, not as "Dr. Rahul Verma". Two people can also have the same display name.
 
-We added an explicit mapping in `.env`, and the matcher checks it before anything else:
+I added an explicit mapping in `.env`, and the matcher checks it before anything else:
 
 ```bash
 PULSE_FLOW_CHAT_HANDLES=SureshMenon_1111111111=u-menon,RahulVerma_2222222222=u-rahul
@@ -333,13 +333,13 @@ Nobody wants to type a twelve-patient handover on a phone at 3 AM. [Wispr Flow](
 
 ![Ward dashboard: "Speak your handover"](assets/blog/app-ward.png)
 
-We wrote the structuring prompt for how tired people actually talk: run-on sentences, filler words, Hinglish, and Indian clinical shorthand (KFT, ABG, NBM). It also handles self-corrections. "Bed 12, no sorry, bed 14" becomes bed 14, and the correction is recorded on the note so a reviewer can see it.
+I wrote the structuring prompt for how tired people actually talk: run-on sentences, filler words, Hinglish, and Indian clinical shorthand (KFT, ABG, NBM). It also handles self-corrections. "Bed 12, no sorry, bed 14" becomes bed 14, and the correction is recorded on the note so a reviewer can see it.
 
 ![Front desk: walk-in registration by voice](assets/blog/app-front-desk.png)
 
 ## Testing agents without a Switch server
 
-A live Switch room is slow to test against, so most of our checks run without one:
+A live Switch room is slow to test against, so most of my checks run without one:
 
 ```bash
 npm test               # typecheck + 48 unit tests: clinical rules, prescriptions, Switch messages
@@ -347,17 +347,17 @@ npm run test:db        # 6 database tests: tokens, tenancy, audit
 npm run test:agents    # 11 agent tests against a seeded database and the real MCP server
 ```
 
-The agent tests start the actual MCP server over stdio, the same way Claude Code does, and call tools as different people. For example, they check that a pharmacist can't approve a note through an agent, and that a PG can't approve the consultant's rounds plan. When we did need the live room, we read its history straight from the server (`GET /agents/{id}/rooms/{room}/history`) to check every reply.
+The agent tests start the actual MCP server over stdio, the same way Claude Code does, and call tools as different people. For example, they check that a pharmacist can't approve a note through an agent, and that a PG can't approve the consultant's rounds plan. When I did need the live room, I read its history straight from the server (`GET /agents/{id}/rooms/{room}/history`) to check every reply.
 
 ![Pharmacy queue, fed by signed prescriptions](assets/blog/app-pharmacy.png)
 
-## Things that cost us hours
+## Things that cost me hours
 
 - **Group Privacy on the Telegram bot.** Turn it off before adding the bot to any group.
 - **No `@`, no agent.** Agents only act when addressed. A message without the tag is ignored, even an obvious "approve all".
 - **Sessions persist.** After you change an agent's `CLAUDE.md`, someone must send `!reset-all-agents` in the group. An agent following its old rules is the most confusing bug you'll meet.
-- **Every step is visible.** The "Worked for 9s" card shows each tool call behind a reply. We cut ours down by giving each agent one tool per job and telling it never to retry a refused call.
-- **Write for the group, not for a log.** Our first replies had ids, markdown and timestamps. A short style guide in `CLAUDE.md` fixed it: plain text, at most six lines, staff names, and one question at the end with the exact reply to send.
+- **Every step is visible.** The "Worked for 9s" card shows each tool call behind a reply. I cut mine down by giving each agent one tool per job and telling it never to retry a refused call.
+- **Write for the group, not for a log.** My first replies had ids, markdown and timestamps. A short style guide in `CLAUDE.md` fixed it: plain text, at most six lines, staff names, and one question at the end with the exact reply to send.
 
 ## What it doesn't do yet
 
@@ -376,18 +376,14 @@ npm test && npm run test:agents
 
 Then follow [switch/TELEGRAM.md](https://github.com/anupama003/pulse-flow/blob/main/switch/TELEGRAM.md) for the Telegram setup, and [switch/DEMO-LINES.md](https://github.com/anupama003/pulse-flow/blob/main/switch/DEMO-LINES.md) for what each person types in the demo.
 
-## What we'd tell another team
+## What I'd tell another team
 
 1. **Start where people already are.** The best tool for a night shift is one nobody has to open.
 2. **Teach the @mention on day one.** Every message to an agent starts with its name, typed out. Telegram's suggestions only offer the one bot, so people have to learn it.
 3. **Make every agent action belong to a person.** Asking "who asked?" is what made the agents safe enough for a hospital group.
 4. **Keep facts in code.** Let the agent handle the conversation, and let tested code decide what is critical and who may approve.
 
-If you work in a hospital and your ward runs on a chat group, we'd like to hear what we got wrong.
-
-## Thanks
-
-To **WeMakeDevs**, **DevTools Academy** and **Switch** for running Flip the Switch, and to **Wispr Flow** for the Code with Wispr track. Built with **Claude Code** and **MCP**.
+If you work in a hospital and your ward runs on a chat group, I'd like to hear what I got wrong.
 
 ## Sources
 
