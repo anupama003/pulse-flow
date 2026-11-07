@@ -159,7 +159,7 @@ npm run test:agents       # 13 integration tests: agents acting for people, RBAC
 
 | | |
 |---|---|
-| Medium / Substack post: research, charts, Switch walkthrough | [docs/12-blog-medium.md](docs/12-blog-medium.md) |
+| Medium / Substack post: how Switch works, first-time setup, the build | [docs/12-blog-medium.md](docs/12-blog-medium.md) |
 | Flip the Switch blog post (problem, design, sources) | [docs/10-blog-flip-the-switch.md](docs/10-blog-flip-the-switch.md) |
 | Demo video script and submission answers | [docs/11-flip-the-switch-submission.md](docs/11-flip-the-switch-submission.md) |
 | Pulse Flow on Switch: agents, rooms, safety model | [switch/README.md](switch/README.md) |
