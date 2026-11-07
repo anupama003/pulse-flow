@@ -76,28 +76,28 @@ export default function AppShell({
     });
 
   return (
-    <div className="min-h-dvh p-3 md:p-6">
-      <div className="mx-auto flex max-w-[1560px] gap-3 rounded-[2.75rem] bg-white p-3 shadow-float md:gap-4 md:p-4">
+    <div className="min-h-dvh p-3 md:h-dvh md:p-5">
+      <div className="mx-auto flex max-w-[1560px] gap-3 rounded-[2.75rem] bg-white p-3 shadow-float md:h-full md:gap-4 md:p-4">
         {/* ── Sidebar ─────────────────────────────────────────────────────── */}
-        <aside data-tour="sidebar" className="sticky top-6 hidden h-[calc(100dvh-5rem)] w-[220px] shrink-0 flex-col gap-3 md:flex">
+        <aside data-tour="sidebar" className="hidden w-[220px] shrink-0 flex-col gap-3 md:flex">
           <Link href="/" className="flex items-center gap-3 rounded-full px-2 py-1 transition hover:opacity-80" aria-label="Pulse Flow home">
             <PulseFlowMark size={52} />
             <span className="text-lg font-semibold">Pulse <span className="text-lavender-400">Flow</span></span>
           </Link>
-          <nav className="flex w-full flex-1 flex-col gap-1 overflow-y-auto rounded-[2rem] bg-ink p-3">
+          <nav className="flex min-h-0 w-full flex-1 flex-col gap-0.5 overflow-y-auto rounded-[2rem] bg-gradient-to-b from-lavender-50 to-blush-50 p-3">
             {entries.map(({ href, label, via }) => {
               const Icon = ICON[href];
               const active = !via && (href === "/" ? path === "/" : path.startsWith(href));
               const badge = !via ? badges[href] : undefined;
-              const row = `relative flex w-full items-center gap-3 rounded-full px-3 py-2.5 text-left text-sm transition ${
-                active ? "bg-blush-200 font-medium text-ink" : "text-white/75 hover:bg-white/10 hover:text-white"
+              const row = `relative flex w-full items-center gap-3 rounded-full px-3 py-2 text-left text-sm transition ${
+                active ? "bg-white font-medium text-ink shadow-widget" : "text-slate-600 hover:bg-white/70 hover:text-ink"
               }`;
               const content = (
                 <>
-                  <Icon className="size-5 shrink-0" />
+                  <Icon className={`size-5 shrink-0 ${active ? "text-blush-700" : "text-lavender-700"}`} />
                   <span className="min-w-0 flex-1 truncate">
                     {label}
-                    {via && <span className="block truncate text-[11px] text-white/45">as {via.name}</span>}
+                    {via && <span className="block truncate text-[11px] text-slate-400">as {via.name}</span>}
                   </span>
                   {!!badge && <span className="grid size-5 place-items-center rounded-full bg-butter-100 text-[10px] font-bold text-butter-700">{badge}</span>}
                 </>
@@ -112,29 +112,29 @@ export default function AppShell({
                 </Link>
               );
             })}
-            <span className="mx-3 my-2 h-px shrink-0 bg-white/10" />
-            <a href="/book" target="_blank" className="flex items-center gap-3 rounded-full px-3 py-2.5 text-sm text-white/75 hover:bg-white/10 hover:text-white">
-              <CalendarPlus className="size-5 shrink-0" />
+            <span className="mx-3 my-2 h-px shrink-0 bg-lavender-100" />
+            <a href="/book" target="_blank" className="flex items-center gap-3 rounded-full px-3 py-2 text-sm text-slate-600 hover:bg-white/70 hover:text-ink">
+              <CalendarPlus className="size-5 shrink-0 text-lavender-700" />
               Patient booking
             </a>
             {onHelp && (
-              <button onClick={onHelp} className="flex items-center gap-3 rounded-full px-3 py-2.5 text-left text-sm text-white/75 hover:bg-white/10 hover:text-white">
-                <HelpCircle className="size-5 shrink-0" />
+              <button onClick={onHelp} className="flex items-center gap-3 rounded-full px-3 py-2 text-left text-sm text-slate-600 hover:bg-white/70 hover:text-ink">
+                <HelpCircle className="size-5 shrink-0 text-lavender-700" />
                 Guided tour
               </button>
             )}
-            <div className="mt-auto flex items-center gap-3 px-2 pt-3">
+            <div className="mt-auto flex items-center gap-3 rounded-full bg-white/70 p-2">
               <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-blush-200 to-lavender-200 text-sm font-semibold text-ink">
                 {initials(me.name)}
-                <span className={`absolute -bottom-1 -right-1 grid size-5 place-items-center rounded-full ring-2 ring-ink ${ROLE_META[me.role].tint}`}>
+                <span className={`absolute -bottom-1 -right-1 grid size-5 place-items-center rounded-full ring-2 ring-white ${ROLE_META[me.role].tint}`}>
                   <RoleIcon className="size-3" />
                 </span>
               </span>
-              <span className="min-w-0 flex-1 text-xs text-white/70">
-                <span className="block truncate font-medium text-white">{me.name}</span>
+              <span className="min-w-0 flex-1 text-xs text-slate-500">
+                <span className="block truncate font-medium text-ink">{me.name}</span>
                 {ROLE_META[me.role].label}
               </span>
-              <button title="Sign out" aria-label="Sign out" className="grid size-9 place-items-center rounded-full text-white/60 hover:bg-white/10 hover:text-white">
+              <button title="Sign out" aria-label="Sign out" className="grid size-9 shrink-0 place-items-center rounded-full text-slate-400 hover:bg-white hover:text-ink">
                 <LogOut className="size-4" />
               </button>
             </div>
@@ -142,7 +142,7 @@ export default function AppShell({
         </aside>
 
         {/* ── Main canvas ─────────────────────────────────────────────────── */}
-        <main className="min-w-0 flex-1 rounded-[2.25rem] bg-gradient-to-b from-[#f8f8fb] to-canvas p-4 md:p-8">
+        <main className="min-w-0 flex-1 rounded-[2.25rem] bg-gradient-to-b from-[#f8f8fb] to-canvas p-4 md:overflow-y-auto md:p-8">
           <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <PulseFlowLogo size={36} className="mr-2 md:hidden" />
