@@ -135,42 +135,42 @@ npm run dev
 
 **Scene 1: night handover** (Lotus Ward)
 - **Rahul types** (hold Wispr Flow, or paste):
-  > @lotus-ward-scribe Bed 21 Fatima Khan, pyelonephritis with AKI on IV ceftriaxone, she's stable, BP 80 by 50 at 2 AM, heart rate 104, recheck BP at 4 and repeat KFT at 8. Bed 7 Meera Iyer, DKA resolved, sugars 140 to 180 on basal-bolus, eating well, discharge after consultant review.
-- **Scribe replies:** two short drafts, bed 21 marked 🔴 (the BP overrode "stable"), ending with `Reply "approve 21", "approve all" or "discard 21".`
-- **Lotus Escalations** gets one 🔴 line from Pulse Flow about bed 21.
+  > @lotus-ward-scribe Sir, night handover. Bed 21 Fatima Khan, pyelo with AKI, inj ceftriaxone 1 gram BD chal raha hai. Patient stable hai, but 2 baje BP 80 by 50 tha, pulse 104. 4 baje BP repeat karna hai, aur subah 8 baje KFT bhejna hai. Bed 7 Meera Iyer, DKA resolved, sugars 140 se 180 on basal-bolus, khana theek kha rahi hai, Menon sir ke round ke baad discharge.
+- **Scribe replies:** two short drafts, bed 21 marked critical (the BP overrode "stable hai"), ending with `Reply "approve 21", "approve all" or "discard 21".`
+- **Lotus Escalations** gets one critical-patient line from Pulse Flow about bed 21.
 
 **Scene 2: who may approve** (Lotus Ward)
-- **Anjali types:** `@lotus-ward-scribe approve 21` → **scribe:** front desk can't approve clinical notes.
-- **You type:** `@lotus-ward-scribe approve 21 and 7` → **scribe:** ✅ both approved, under your name. (Not "approve all": that would also approve P-4's waiting note, which scene 3 escalates.)
+- **Anjali types:** `@lotus-ward-scribe bed 21 ka note approve kar dijiye, sir ne bola tha` → **scribe:** front desk can't approve clinical notes.
+- **You type:** `@lotus-ward-scribe 21 aur 7 dono approve. 21 ka BP 4 baje phir se check karna.` → **scribe:** both approved, under your name. (Not "approve all": that would also approve P-4's waiting note, which scene 3 escalates.)
 
 **Scene 3: the coordinator chases** (terminal, then Lotus Ward)
 - **You run:** `npm run switch:nudge -- --at 06:45`
 - **Pulse Flow posts:** `@lotus-ward-coordinator 06:45 check: 1 late task, 1 note waiting for approval.`
 - **Coordinator posts** (to the PG on duty):
   > Dr. Rahul, 2 things from the night:
-  > ⏰ ICU-2 Vikram Singh: STAT ABG and lactate, due 6 AM, 45 min late.
-  > 📝 P-4 Aarav Sharma: handover note waiting for approval.
+  > ICU-2 Vikram Singh: STAT ABG and lactate, due 6 AM, 45 min late.
+  > P-4 Aarav Sharma: handover note waiting for approval.
   > Reply "done ICU-2" when the ABG is done, or "approve P-4".
-- **Rahul types:** `@lotus-ward-coordinator done ICU-2` → **coordinator:** `✅ ICU-2 ABG and lactate, done by Dr. Rahul.`
+- **Rahul types:** `@lotus-ward-coordinator ICU-2 ka ABG aur lactate ho gaya, sample lab mein de diya` → **coordinator:** ICU-2 marked done by Dr. Rahul. (Fallback if it asks to confirm: `@lotus-ward-coordinator done ICU-2`.)
 - **You run** `npm run switch:nudge -- --at 07:15` (half an hour later; repeating 06:45 makes the coordinator wait, since Rahul had no time to act). P-4's note is still waiting, so the coordinator tells the consultant in **Lotus Escalations**:
   > Dr. Menon, still open after a reminder to Dr. Rahul:
-  > 📝 P-4 Aarav Sharma: handover note waiting for approval.
-- **You type** in Lotus Ward: `@lotus-ward-scribe approve P-4`.
+  > P-4 Aarav Sharma: handover note waiting for approval.
+- **You type** in Lotus Ward: `@lotus-ward-scribe P-4 approve`.
 
 **Scene 4: consultant rounds** (Lotus Ward)
 - **You type:**
-  > @lotus-ward-scribe ICU-2 rounds: BP better at 96 by 60 on norad 0.05, MAP fine now so drop the ICU registrar call, wean norad off by noon, start enteral feeds.
+  > @lotus-ward-scribe ICU-2 rounds: BP ab better hai, 96 by 60 on norad 0.05. MAP theek hai, toh ICU registrar ko call karne ki zarurat nahi. Norad 12 baje tak wean off karo, aur RT feeds start karo.
 - **Scribe replies:** the updated plan (new tasks, the registrar call stopped) and asks you to approve.
-- **You type:** `@lotus-ward-scribe approve ICU-2`. (If Rahul tries, he's refused: only the consultant approves rounds.)
+- **You type:** `@lotus-ward-scribe ICU-2 approve`. (If Rahul tries, he's refused: only the consultant approves rounds.)
 
 **Scene 5: walk-in** (Lotus OPD Desk)
 - **Anjali types:**
-  > @lotus-opd-desk walk-in Ramesh Patil 54 male, chest pain since morning and sweating, 9812345678, ok for WhatsApp
-- **OPD desk replies:** token, room and doctor, and "send him straight in". **Lotus Escalations** gets 🚨 from Pulse Flow, though nobody typed "emergency".
+  > @lotus-opd-desk walk-in: Ramesh Patil, 54 saal, male. Subah se seene mein dard hai aur pasina aa raha hai. Mobile 98123 45678.
+- **OPD desk replies:** token, room and doctor, and "send him straight in". **Lotus Escalations** gets an emergency alert from Pulse Flow, though nobody typed "emergency".
 
 **Scene 6: pharmacy** (web app, then Lotus Pharmacy & Lab)
-- In the web app, `/opd` as Dr. Rao → call next → dictate → sign. **Pulse Flow posts** 🧾 in Lotus Pharmacy & Lab.
-- **Pharmacist types:** `@lotus-fulfilment DER-001 preparing`, then `@lotus-fulfilment DER-001 ready` → `✅ DER-001 ready.` (DER-001 starts queued, so it must be prepared first.)
+- In the web app, `/opd` as Dr. Rao → call next → dictate → sign. **Pulse Flow posts** the signed prescription in Lotus Pharmacy & Lab.
+- **Pharmacist types:** `@lotus-fulfilment DER-001 ki dawai nikal rahe hain`, then `@lotus-fulfilment DER-001 ready hai, patient ko counter 2 pe bhej do` → DER-001 ready. (DER-001 starts queued, so it must be prepared first.)
 
 **Scene 7: the record** — web app `/audit` → **Switch rooms** as Deepak: every agent action under the person it acted for.
 

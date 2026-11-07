@@ -37,13 +37,13 @@ The coordinator's messages are copied from a live run; the scribe's are shortene
 
 ```
 Lotus Ward
-  Dr. Rahul (night PG):  @lotus-ward-scribe Bed 21 Fatima Khan, pyelonephritis with AKI,
-                         she's stable, BP 80 by 50 at 2 AM, heart rate 104 … Bed 7 Meera Iyer …
+  Dr. Rahul (night PG):  @lotus-ward-scribe Sir, night handover. Bed 21 Fatima Khan, pyelo with AKI …
+                         patient stable hai, but 2 baje BP 80 by 50 tha, pulse 104 … Bed 7 Meera Iyer …
   ward-scribe:           🔴 Bed 21 · Fatima Khan: critical, BP 80/50 (said "stable"; the vitals rule overrode it)
                          Bed 7 · Meera Iyer: …   Reply "approve 21", "approve all" or "discard 21".
-  Anjali (front desk):   @lotus-ward-scribe approve 21
+  Anjali (front desk):   @lotus-ward-scribe bed 21 ka note approve kar dijiye, sir ne bola tha
   ward-scribe:           Front desk can't approve clinical notes.            ← refused by Pulse Flow, not the prompt
-  Dr. Menon (consultant): @lotus-ward-scribe approve 21 and 7
+  Dr. Menon (consultant): @lotus-ward-scribe 21 aur 7 dono approve
   ward-scribe:           ✅ Both approved, under Dr. Menon's name.
 
   Pulse Flow:            @lotus-ward-coordinator 06:45 check: 1 late task, 1 note waiting for approval.
@@ -51,7 +51,7 @@ Lotus Ward
                          ⏰ ICU-2 Vikram Singh: STAT repeat ABG and lactate, due 6 AM, 45 min late.
                          📝 P-4 Aarav Sharma: handover note waiting for approval.
                          Reply "done ICU-2" when the ABG is done, or "approve P-4".
-  Dr. Rahul:             @lotus-ward-coordinator done ICU-2
+  Dr. Rahul:             @lotus-ward-coordinator ICU-2 ka ABG aur lactate ho gaya
   ward-coordinator:      ✅ ICU-2 ABG and lactate, done by Dr. Rahul.
 
 Lotus Escalations  (half an hour later, P-4 still waiting)
@@ -82,6 +82,20 @@ Every one of those actions is now in the patient's record and in **Audit → Swi
 ```
 
 **Code owns the facts; agents own the follow-through.** Pulse Flow computes what is late, what is critical and who may approve, the same way every time, with tests. The agents decide how to say it to a person and when to chase.
+
+### With Switch and without it
+
+Take Switch out (stop Switch Console or remove the `SWITCH_*` lines from `.env`, then restart) and the app tells you so:
+
+| | With Switch | Without Switch |
+|---|---|---|
+| Header badge | **Switch on** | **Switch off** |
+| Critical patient in a handover | Posted to the escalations group on Telegram | "Not sent: Switch is off. Only people looking at this screen will know." |
+| `npm run switch:nudge -- --at 06:45` | The coordinator asks the PG on duty, then escalates to the consultant | Lists the late items and says nobody was messaged |
+| Approvals, walk-ins, pharmacy updates from chat | Done in Telegram, under the person who asked | Not possible: there are no agents |
+| Audit → Switch rooms | "sent" | "not sent (Switch off)" |
+
+The web app (dictation, drafts, approvals, queues) works either way. The alerts, follow-ups and escalations that reach people on their phones exist only with Switch.
 
 ### The safety model
 

@@ -6,7 +6,7 @@ import { extractHandover, parserMeta } from "../sbar/extract";
 import { HandoverExtractionSchema, type HandoverExtraction } from "../sbar/schema";
 import type { SessionUser } from "../staff";
 import { createDrafts, getCensus, type NewDraft } from "../store";
-import type { UnmatchedCard } from "../types";
+import type { CriticalAlertOutcome, UnmatchedCard } from "../types";
 
 // The shift-handover pipeline, shared by the ward screen (app/actions/ward.ts) and the Switch
 // ward agent (switch/mcp). Whoever structured the dictation, the same deterministic clinical
@@ -50,6 +50,8 @@ export interface HandoverResult {
   unmatched: UnmatchedCard[];
   unassigned: string[];
   critical: CriticalDraft[];
+  /** Whether each critical alert reached the escalations room (SIMULATED when Switch is off). */
+  alerts: CriticalAlertOutcome[];
 }
 
 /**
@@ -88,9 +90,10 @@ export async function draftHandover(
     const p = census.find((c) => c.id === d.patientId)!;
     return [{ noteId, patientId: d.patientId, bedNumber: p.bedNumber ?? "-", patientName: p.name, reasons: d.draft.criticalReasons, autoEscalated: d.draft.autoEscalated }];
   });
-  await Promise.all(critical.map((c) => postToRoom(buildCriticalAlert({ ...c, authorName: author.name }))));
+  const alertStatuses = await Promise.all(critical.map((c) => postToRoom(buildCriticalAlert({ ...c, authorName: author.name }))));
+  const alerts = critical.map((c, i) => ({ bed: c.bedNumber, patientName: c.patientName, status: alertStatuses[i] }));
 
-  return { handoverId: saved?.handoverId ?? null, noteIds: saved?.noteIds ?? [], unmatched, unassigned: extraction.unassignedNotes, critical };
+  return { handoverId: saved?.handoverId ?? null, noteIds: saved?.noteIds ?? [], unmatched, unassigned: extraction.unassignedNotes, critical, alerts };
 }
 
 function parseStructured(input: unknown): HandoverExtraction {

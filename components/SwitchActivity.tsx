@@ -33,7 +33,7 @@ export default function SwitchActivity({ logs, actors, names }: Props) {
       <h2 className="text-xl font-medium">Switch rooms</h2>
       <p className="mb-4 text-sm text-slate-400">
         Alerts Pulse Flow posted into the ward, escalations, OPD and pharmacy/lab rooms, and every action a Switch agent took for a named staff member.
-        Posts are simulated until Switch is configured in .env.
+        Posts marked &ldquo;not sent&rdquo; were built while Switch was off: nobody saw them in Telegram.
       </p>
       <ul className="space-y-2">
         {logs.map((l) => {
@@ -47,7 +47,7 @@ export default function SwitchActivity({ logs, actors, names }: Props) {
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="rounded-full bg-lavender-100 px-2.5 py-0.5 text-xs font-medium text-lavender-700">#{m.room ?? "room"}</span>
                   <span className="text-xs font-medium uppercase tracking-wider text-slate-500">{(m.event ?? "").replace(/_/g, " ").toLowerCase()}</span>
-                  <span className={`ml-auto rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_TINT[m.status ?? ""] ?? "bg-canvas text-slate-500"}`}>{(m.status ?? "").toLowerCase()}</span>
+                  <span className={`ml-auto rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_TINT[m.status ?? ""] ?? "bg-canvas text-slate-500"}`}>{m.status === "SIMULATED" ? "not sent (Switch off)" : (m.status ?? "").toLowerCase()}</span>
                   <span className="text-xs text-slate-400">{istTime(l.at)}</span>
                 </div>
                 <p className="mt-2 whitespace-pre-line text-sm leading-relaxed">{m.text}</p>

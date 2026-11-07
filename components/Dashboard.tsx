@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import { AnimatePresence, motion } from "framer-motion";
 import { ClipboardCheck, HeartPulse, ListTodo, ShieldCheck } from "lucide-react";
 import { approveDraft, discardDraft, submitHandover, submitRounds, toggleTask } from "@/app/actions/ward";
-import type { DashboardData, DraftEdits, TaskView, UnmatchedCard, UserView } from "@/lib/types";
+import type { CriticalAlertOutcome, DashboardData, DraftEdits, TaskView, UnmatchedCard, UserView } from "@/lib/types";
 import ActionBoard from "./ActionBoard";
 import AppShell, { type Shell } from "./AppShell";
 import ApprovalQueue from "./ApprovalQueue";
@@ -30,7 +30,7 @@ export default function Dashboard({ initial, shell }: { initial: DashboardData; 
 
   // Shift brain dump
   const [draft, setDraft] = useState("");
-  const [review, setReview] = useState<{ raw: string; handoverId: string | null; unmatched: UnmatchedCard[]; unassigned: string[] } | null>(null);
+  const [review, setReview] = useState<{ raw: string; handoverId: string | null; unmatched: UnmatchedCard[]; unassigned: string[]; alerts?: CriticalAlertOutcome[] } | null>(null);
   const [handoverError, setHandoverError] = useState<string | null>(null);
   const [handoverPending, startHandover] = useTransition();
 
@@ -97,7 +97,7 @@ export default function Dashboard({ initial, shell }: { initial: DashboardData; 
         setReview(null);
         return;
       }
-      setReview({ raw, handoverId: res.data.handoverId, unmatched: res.data.unmatched, unassigned: res.data.unassigned });
+      setReview({ raw, handoverId: res.data.handoverId, unmatched: res.data.unmatched, unassigned: res.data.unassigned, alerts: res.data.alerts });
       setData(res.data.dashboard);
       setDraft("");
     });
@@ -178,6 +178,7 @@ export default function Dashboard({ initial, shell }: { initial: DashboardData; 
             <p className="mt-2 text-slate-400">
               Good {greeting()}, {me.name.split(" ").slice(0, 2).join(" ")}. Speak the handover. Leave on time.
             </p>
+            <SwitchNotice on={shell.switchOn} />
           </div>
 
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
@@ -242,6 +243,7 @@ export default function Dashboard({ initial, shell }: { initial: DashboardData; 
             <AnimatePresence>
               {review && (
                 <motion.div className="min-w-0 xl:col-span-12" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+                  {!!review.alerts?.length && <AlertOutcomes alerts={review.alerts} />}
                   <LiveReview
                     raw={review.raw}
                     drafts={reviewDrafts}
@@ -325,6 +327,35 @@ export default function Dashboard({ initial, shell }: { initial: DashboardData; 
 
       <OnboardingTour open={tourOpen} onClose={() => setTourOpen(false)} />
     </AppShell>
+  );
+}
+
+/** What Switch adds on this screen, said plainly, so running without it visibly does less. */
+function SwitchNotice({ on }: { on: boolean }) {
+  return (
+    <p className={`mt-3 max-w-3xl rounded-2xl px-4 py-2.5 text-sm ${on ? "bg-mint-50 text-mint-700" : "bg-butter-100 text-butter-700"}`}>
+      {on
+        ? "Switch is on: critical patients go to the escalations group on Telegram, and the ward coordinator agent follows up on late tasks and waiting notes."
+        : "Switch is off: this screen is the only place critical patients and late tasks show up. Nobody is messaged on Telegram, and no agent follows up or escalates."}
+    </p>
+  );
+}
+
+/** After a handover: did each critical alert reach the escalations group, or only this screen? */
+function AlertOutcomes({ alerts }: { alerts: CriticalAlertOutcome[] }) {
+  return (
+    <ul className="mb-3 space-y-1.5">
+      {alerts.map((a) => (
+        <li key={a.bed} className={`rounded-2xl px-4 py-2.5 text-sm ${a.status === "SENT" ? "bg-mint-50 text-mint-700" : "bg-blush-100 text-blush-700"}`}>
+          <span className="font-medium">Bed {a.bed}, {a.patientName}: critical.</span>{" "}
+          {a.status === "SENT"
+            ? "Sent to the escalations group on Telegram."
+            : a.status === "FAILED"
+              ? "Couldn't reach Switch, so the escalations group wasn't told. Call the consultant."
+              : "Not sent: Switch is off. Only people looking at this screen will know."}
+        </li>
+      ))}
+    </ul>
   );
 }
 

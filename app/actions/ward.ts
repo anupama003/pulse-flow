@@ -8,7 +8,7 @@ import { withStaff } from "@/lib/session";
 import { approveDraft as approve, discardDraft as discard, getCensus, getDashboard, setTaskCompleted } from "@/lib/store";
 import { draftHandover } from "@/lib/ward/handover";
 import { draftRounds } from "@/lib/ward/rounds";
-import type { ActionResult, DashboardData, DraftEdits, UnmatchedCard } from "@/lib/types";
+import type { ActionResult, CriticalAlertOutcome, DashboardData, DraftEdits, UnmatchedCard } from "@/lib/types";
 
 async function fresh(): Promise<DashboardData> {
   revalidatePath("/");
@@ -17,11 +17,11 @@ async function fresh(): Promise<DashboardData> {
 
 export async function submitHandover(
   raw: string,
-): Promise<ActionResult<{ handoverId: string | null; unmatched: UnmatchedCard[]; unassigned: string[]; dashboard: DashboardData }>> {
+): Promise<ActionResult<{ handoverId: string | null; unmatched: UnmatchedCard[]; unassigned: string[]; alerts: CriticalAlertOutcome[]; dashboard: DashboardData }>> {
   return attempt(() =>
     withStaff("ward:dictate", "IPD shift handover", async (user) => {
       const res = await draftHandover(user, raw);
-      return { handoverId: res.handoverId, unmatched: res.unmatched, unassigned: res.unassigned, dashboard: await fresh() };
+      return { handoverId: res.handoverId, unmatched: res.unmatched, unassigned: res.unassigned, alerts: res.alerts, dashboard: await fresh() };
     }),
   );
 }

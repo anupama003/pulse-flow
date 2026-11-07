@@ -59,6 +59,12 @@ export function switchConfig(): SwitchConfig | null {
   return { baseUrl: baseUrl.replace(/\/+$/, ""), agentId, apiKey, rooms };
 }
 
+/** True when Pulse Flow can post into Switch rooms (server, agent key and at least one room set). */
+export function switchConnected(): boolean {
+  const cfg = switchConfig();
+  return !!cfg && Object.keys(cfg.rooms).length > 0;
+}
+
 // ─── Builders ─────────────────────────────────────────────────────────────────
 
 const list = (xs: string[]) => xs.filter(Boolean).join(", ");

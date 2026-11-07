@@ -1,5 +1,6 @@
 import "server-only";
 import type { Shell } from "@/components/AppShell";
+import { switchConnected } from "@/server/services/Switch";
 import type { Permission } from "./rbac";
 import { ForbiddenError, sessionUser, shellData, withStaff, type SessionUser } from "./session";
 
@@ -14,6 +15,7 @@ export async function staffPage<T>(
   const shell: Shell = {
     me: { id: user.id, name: user.name, role: user.role, facilityName: user.facilityName, facilityType: user.facilityType, hprId: user.hprId },
     users: s.users,
+    switchOn: switchConnected(),
   };
   try {
     return { shell, user, ok: true, data: await withStaff(perm, purpose, load) };

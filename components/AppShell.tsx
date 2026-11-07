@@ -22,6 +22,8 @@ const ICON: Record<string, typeof BedDouble> = {
 export interface Shell {
   me: { id: string; name: string; role: Role; facilityName: string; facilityType: "HOSPITAL" | "CLINIC"; hprId: string | null };
   users: PersonaUser[];
+  /** Whether Pulse Flow is connected to Switch rooms. Off: alerts and follow-ups stay inside this app. */
+  switchOn: boolean;
 }
 
 /** Staff chrome shared by every module: ink pill sidebar (filtered by RBAC), facility chip, persona switch. */
@@ -125,6 +127,7 @@ export default function AppShell({
                 <span className="font-medium">{me.facilityName}</span>
                 <span className="rounded-full bg-lavender-50 px-2 py-0.5 text-[10px] font-semibold uppercase text-lavender-700">{me.facilityType === "CLINIC" ? "Clinic" : "Hospital"}</span>
               </span>
+              <SwitchBadge on={shell.switchOn} />
               <PersonaMenu users={shell.users} current={me} onSwitch={handleSwitch} busy={switching} />
             </div>
           </header>
@@ -148,6 +151,23 @@ export default function AppShell({
 }
 
 /** Shown when a persona opens a module their role can't access. */
+/** Header badge: is the hospital's Telegram groups connected through Switch, or is this the app on its own? */
+function SwitchBadge({ on }: { on: boolean }) {
+  const title = on
+    ? "Connected to Switch: alerts go to the hospital's Telegram groups, and the ward coordinator agent follows up on late work."
+    : "Switch is off: alerts and late tasks stay on these screens. Nobody is messaged and no agent follows up.";
+  return (
+    <Link
+      href="/audit?tab=switch"
+      title={title}
+      className={`hidden items-center gap-2 rounded-full py-2 pl-3 pr-4 text-sm font-medium shadow-widget sm:flex ${on ? "bg-mint-50 text-mint-700" : "bg-white text-slate-500"}`}
+    >
+      <span className={`size-2 rounded-full ${on ? "bg-mint-400" : "bg-slate-300"}`} />
+      {on ? "Switch on" : "Switch off"}
+    </Link>
+  );
+}
+
 export function AccessDenied({ shell, message }: { shell: Shell; message: string }) {
   return (
     <AppShell shell={shell}>

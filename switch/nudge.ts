@@ -9,6 +9,7 @@
 // Without Switch configured, the messages are simulated and shown in Audit → Switch rooms.
 import { mostRecentIst } from "../lib/ward/followups";
 import { runWardChecks, type WardCheckResult } from "../lib/ward/nudges";
+import { switchConnected } from "../server/services/Switch";
 
 const CHECK_EVERY_MS = 15 * 60_000;
 const BRIEF_HOUR_IST = 8;
@@ -25,6 +26,13 @@ function report(results: WardCheckResult[]) {
     const nudge = r.nudge ? `${r.nudge.items} item(s) → #ward (${r.nudge.status.toLowerCase()})` : "nothing to chase";
     const brief = r.brief ? `, brief → #escalations (${r.brief.toLowerCase()})` : "";
     console.log(`${istNow().toISOString().slice(11, 16)} IST · ${r.facility}: ${nudge}${brief}`);
+  }
+  if (!switchConnected() && results.some((r) => r.nudge)) {
+    console.log(
+      "\nSwitch is off, so nothing was sent and no agent was woken. The late items above stay on the ward screen\n" +
+        "until someone happens to look. With Switch, the ward coordinator would message the PG on duty in Telegram\n" +
+        "now, and escalate to the consultant if nothing happens.",
+    );
   }
 }
 

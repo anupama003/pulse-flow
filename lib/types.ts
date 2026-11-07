@@ -103,6 +103,13 @@ export interface UnmatchedCard {
   uncertainties: string[];
 }
 
+/** A critical patient from a handover, and whether the alert reached the escalations room. */
+export interface CriticalAlertOutcome {
+  bed: string;
+  patientName: string;
+  status: "SENT" | "SIMULATED" | "FAILED";
+}
+
 /** What a doctor can change on a draft before approving it. */
 export interface DraftEdits {
   sbar?: Sbar;
