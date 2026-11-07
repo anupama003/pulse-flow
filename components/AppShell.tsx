@@ -45,7 +45,22 @@ export default function AppShell({
   const [switching, startSwitch] = useTransition();
   const me = shell.me;
   const RoleIcon = ROLE_META[me.role].icon;
-  const modules = MODULES.filter((m) => can(me.role, m.perm));
+  // Every module is one click away. One this role can't open goes through a colleague who can
+  // (the pharmacist for Pharmacy), so a demo never needs a typed URL or the persona menu.
+  const colleagues = shell.users.filter((u) => u.facilityName === me.facilityName);
+  const entries = MODULES.flatMap((m): { href: string; label: string; via: PersonaUser | null }[] => {
+    if (can(me.role, m.perm)) return [{ href: m.href, label: m.label, via: null }];
+    const via = colleagues.find((u) => can(u.role, m.perm));
+    return via ? [{ href: m.href, label: m.label, via }] : [];
+  });
+  const openAs = (href: string, userId: string) =>
+    startSwitch(async () => {
+      const res = await switchUser(userId);
+      if (res.ok) {
+        router.push(href);
+        router.refresh();
+      }
+    });
 
   const handleSwitch = (id: string) =>
     startSwitch(async () => {
@@ -60,52 +75,63 @@ export default function AppShell({
     <div className="min-h-dvh p-3 md:p-6">
       <div className="mx-auto flex max-w-[1560px] gap-3 rounded-[2.75rem] bg-white p-3 shadow-float md:gap-4 md:p-4">
         {/* ── Sidebar ─────────────────────────────────────────────────────── */}
-        <aside data-tour="sidebar" className="sticky top-6 hidden h-[calc(100dvh-5rem)] w-[76px] shrink-0 flex-col items-center gap-3 md:flex">
-          <Link href="/" className="grid size-[68px] place-items-center rounded-full shadow-widget transition hover:scale-105" aria-label="Pulse Flow home" title="Pulse Flow">
-            <PulseFlowMark size={68} />
+        <aside data-tour="sidebar" className="sticky top-6 hidden h-[calc(100dvh-5rem)] w-[220px] shrink-0 flex-col gap-3 md:flex">
+          <Link href="/" className="flex items-center gap-3 rounded-full px-2 py-1 transition hover:opacity-80" aria-label="Pulse Flow home">
+            <PulseFlowMark size={52} />
+            <span className="text-lg font-semibold">Pulse <span className="text-lavender-400">Flow</span></span>
           </Link>
-          <nav className="flex w-full flex-1 flex-col items-center gap-2 overflow-y-auto rounded-full bg-ink py-6">
-            {modules.map(({ href, label }) => {
+          <nav className="flex w-full flex-1 flex-col gap-1 overflow-y-auto rounded-[2rem] bg-ink p-3">
+            {entries.map(({ href, label, via }) => {
               const Icon = ICON[href];
-              const active = href === "/" ? path === "/" : path.startsWith(href);
-              const badge = badges[href];
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  title={label}
-                  aria-label={label}
-                  aria-current={active ? "page" : undefined}
-                  target={href === "/queue" ? "_blank" : undefined}
-                  className={`relative grid size-12 shrink-0 place-items-center rounded-full transition ${
-                    active ? "bg-blush-200 text-ink shadow-[0_0_0_6px_rgb(255_255_255/0.08)]" : "text-white/70 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  <Icon className="size-5" />
-                  {!!badge && (
-                    <span className="absolute -right-0.5 -top-0.5 grid size-5 place-items-center rounded-full bg-butter-100 text-[10px] font-bold text-butter-700 ring-2 ring-ink">{badge}</span>
-                  )}
+              const active = !via && (href === "/" ? path === "/" : path.startsWith(href));
+              const badge = !via ? badges[href] : undefined;
+              const row = `relative flex w-full items-center gap-3 rounded-full px-3 py-2.5 text-left text-sm transition ${
+                active ? "bg-blush-200 font-medium text-ink" : "text-white/75 hover:bg-white/10 hover:text-white"
+              }`;
+              const content = (
+                <>
+                  <Icon className="size-5 shrink-0" />
+                  <span className="min-w-0 flex-1 truncate">
+                    {label}
+                    {via && <span className="block truncate text-[11px] text-white/45">as {via.name.replace(/^Dr\.?\s+/, "Dr. ").split(" ").slice(0, 2).join(" ")}</span>}
+                  </span>
+                  {!!badge && <span className="grid size-5 place-items-center rounded-full bg-butter-100 text-[10px] font-bold text-butter-700">{badge}</span>}
+                </>
+              );
+              return via ? (
+                <button key={href} onClick={() => openAs(href, via.id)} disabled={switching} className={row} title={`Open ${label} as ${via.name}`}>
+                  {content}
+                </button>
+              ) : (
+                <Link key={href} href={href} aria-current={active ? "page" : undefined} target={href === "/queue" ? "_blank" : undefined} className={row}>
+                  {content}
                 </Link>
               );
             })}
-            <span className="my-2 h-px w-8 shrink-0 bg-white/10" />
-            <a href="/book" target="_blank" title="Patient booking page" aria-label="Patient booking page" className="grid size-12 shrink-0 place-items-center rounded-full text-white/70 hover:bg-white/10 hover:text-white">
-              <CalendarPlus className="size-5" />
+            <span className="mx-3 my-2 h-px shrink-0 bg-white/10" />
+            <a href="/book" target="_blank" className="flex items-center gap-3 rounded-full px-3 py-2.5 text-sm text-white/75 hover:bg-white/10 hover:text-white">
+              <CalendarPlus className="size-5 shrink-0" />
+              Patient booking
             </a>
             {onHelp && (
-              <button onClick={onHelp} title="Replay tour" aria-label="Replay tour" className="grid size-12 shrink-0 place-items-center rounded-full text-white/70 hover:bg-white/10 hover:text-white">
-                <HelpCircle className="size-5" />
+              <button onClick={onHelp} className="flex items-center gap-3 rounded-full px-3 py-2.5 text-left text-sm text-white/75 hover:bg-white/10 hover:text-white">
+                <HelpCircle className="size-5 shrink-0" />
+                Guided tour
               </button>
             )}
-            <div className="mt-auto flex flex-col items-center gap-3 pt-3">
-              <span title={`${me.name} · ${ROLE_META[me.role].label}`} className="relative grid size-11 place-items-center rounded-full bg-gradient-to-br from-blush-200 to-lavender-200 text-sm font-semibold text-ink ring-2 ring-white/20">
+            <div className="mt-auto flex items-center gap-3 px-2 pt-3">
+              <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-blush-200 to-lavender-200 text-sm font-semibold text-ink">
                 {initials(me.name)}
                 <span className={`absolute -bottom-1 -right-1 grid size-5 place-items-center rounded-full ring-2 ring-ink ${ROLE_META[me.role].tint}`}>
                   <RoleIcon className="size-3" />
                 </span>
               </span>
-              <button title="Sign out" aria-label="Sign out" className="grid size-12 place-items-center rounded-full text-white/70 hover:bg-white/10 hover:text-white">
-                <LogOut className="size-5" />
+              <span className="min-w-0 flex-1 text-xs text-white/70">
+                <span className="block truncate font-medium text-white">{me.name}</span>
+                {ROLE_META[me.role].label}
+              </span>
+              <button title="Sign out" aria-label="Sign out" className="grid size-9 place-items-center rounded-full text-white/60 hover:bg-white/10 hover:text-white">
+                <LogOut className="size-4" />
               </button>
             </div>
           </nav>
@@ -133,10 +159,15 @@ export default function AppShell({
           </header>
           {/* Mobile module nav */}
           <nav className="-mx-1 mb-5 flex gap-2 overflow-x-auto px-1 pb-1 md:hidden">
-            {modules.map(({ href, label }) => {
-              const active = href === "/" ? path === "/" : path.startsWith(href);
-              return (
-                <Link key={href} href={href} className={`shrink-0 rounded-full px-4 py-2 text-sm ${active ? "bg-ink text-white" : "bg-white text-slate-500 shadow-widget"}`}>
+            {entries.map(({ href, label, via }) => {
+              const active = !via && (href === "/" ? path === "/" : path.startsWith(href));
+              const cls = `shrink-0 rounded-full px-4 py-2 text-sm ${active ? "bg-ink text-white" : "bg-white text-slate-500 shadow-widget"}`;
+              return via ? (
+                <button key={href} onClick={() => openAs(href, via.id)} disabled={switching} className={cls}>
+                  {label}
+                </button>
+              ) : (
+                <Link key={href} href={href} className={cls}>
                   {label}
                 </Link>
               );
