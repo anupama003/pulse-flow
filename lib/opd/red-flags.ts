@@ -3,7 +3,7 @@
 // instead of quietly giving them an OPD token for tomorrow. Pure module, unit-tested.
 
 const RULES: { label: string; re: RegExp }[] = [
-  { label: "Chest pain or pressure", re: /\bchest (pain|pressure|tightness|heaviness)|pain in (my|the) chest|heart attack/i },
+  { label: "Chest pain or pressure", re: /\bchest (pain|pressure|tightness|heaviness)|pain in (my|the) chest|heart attack|\b(seene|chhati|chhaati) (mein|me|main) (dard|bhaaripan|jakdan)/i },
   { label: "Difficulty breathing", re: /\b(can'?t|cannot|unable to|difficulty|trouble|hard to) breath|breathless|short(ness)? of breath|gasping|lips (are |turning )?blue/i },
   { label: "Fainting or unresponsive", re: /\b(fainted|passed out|unconscious|not responding|unresponsive|collapsed)\b/i },
   { label: "Seizure", re: /\b(seizure|fits?|convulsions?|convulsing)\b/i },

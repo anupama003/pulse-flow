@@ -24,6 +24,7 @@ test("red flags: 'severe acidity and stomach pain' is NOT an emergency", () => {
 test("red flags: chest pain / vomiting blood / child rash that doesn't fade are emergencies", () => {
   assert.ok(detectRedFlags("acidity but also chest pain going to my left arm").includes("Chest pain or pressure"));
   assert.ok(detectRedFlags("he vomited blood twice").includes("Vomiting blood or black stools"));
+  assert.ok(detectRedFlags("Subah se seene mein dard hai aur pasina aa raha hai").includes("Chest pain or pressure"), "Hinglish chest pain");
   assert.ok(detectRedFlags("my son has fever and a purple rash that doesn't fade").length > 0);
 });
 test("red flags: paediatric itchy rash script is routine", () => {
