@@ -289,11 +289,6 @@ export async function runAgentTool(t: AgentTool, rawArgs: unknown, opts: { facil
   const parsed = z.object(t.input).safeParse(rawArgs);
   if (!parsed.success) throw new UserError(`Invalid ${parsed.error.issues[0]?.path.join(".")}`);
   const route = `switch:${opts.agentName}`;
-  // A read-only check that Pulse Flow itself asked for runs as SYSTEM. Nothing else can.
-  if (t.runForPulseFlow && isPulseFlowSender(String(parsed.data.actor))) {
-    return runWithCtx({ facilityId: opts.facilityId, actorId: null, actorRole: "SYSTEM",
-      purpose: `${t.purpose} (Pulse Flow check via Switch)`, route }, () => t.runForPulseFlow!(parsed.data));
-  }
   const u = await resolveActor(String(parsed.data.actor), opts.facilityId); // ambiguous names are refused
   return runAsStaff(u, t.perm, { purpose: `${t.purpose} (via Switch)`, route }, (me) => t.run(me, parsed.data));
 }
@@ -303,18 +298,19 @@ On top of that:
 
 1. **Least privilege, twice.** Each agent gets only its own tools (the OPD desk has 3 of 14 and can't touch a ward note), and every tool checks the person's permission as well.
 2. **AI drafts, doctors decide.** Notes stay drafts until a named doctor approves them in the group. Agents never sign prescriptions. That stays in the web app, with the consultant's HPR ID.
-3. **Rules run after the model.** Whatever the model wrote, fixed rules re-read the vitals. If systolic BP is under 90 (adjusted for children), MAP under 65, SpO₂ under 92% or potassium 6 or more, the patient is critical, whatever words the doctor used:
-
-   ```ts
-   const sbpFloor = peds ? (ageYears! <= 10 ? 70 + 2 * ageYears! : 90) : 90;
-   if (v.sbp < sbpFloor) f.push({ label: `BP ${v.sbp}/${v.dbp}`, rule: `SBP < ${sbpFloor}` });
-   else if (map < 65) f.push({ label: `BP ${v.sbp}/${v.dbp}`, rule: `MAP ${map} < 65` });
-   ```
-
+3. **Rules run after the model.** Whatever the model wrote, fixed rules re-read the vitals. If systolic BP is under 90 (adjusted for children), MAP under 65, SpO₂ under 92% or potassium 6 or more, the patient is critical, whatever words the doctor used.
 4. **One hospital per agent.** Each agent's tool server is pinned to one facility. It can't find another branch's staff or read its patients.
 5. **Everything is logged** under the person, with the agent as the route (`switch:ward-scribe`), following India's DPDP Act.
 
-The short version: **code owns the facts, agents own the follow-through.** Pulse Flow decides what is critical and who may approve, the same way every time, with tests. The agent decides how to say it to a tired person.
+The vitals rule from point 3, in code:
+
+```ts
+const sbpFloor = peds ? (ageYears! <= 10 ? 70 + 2 * ageYears! : 90) : 90;
+if (v.sbp < sbpFloor) f.push({ label: `BP ${v.sbp}/${v.dbp}`, rule: `SBP < ${sbpFloor}` });
+else if (map < 65) f.push({ label: `BP ${v.sbp}/${v.dbp}`, rule: `MAP ${map} < 65` });
+```
+
+The short version: **code owns the facts, agents own the conversation.** Pulse Flow decides what is critical and who may approve, the same way every time, with tests. The agent decides how to say it to a tired person.
 
 ## Chat names are not staff names
 
@@ -358,7 +354,7 @@ The agent tests start the actual MCP server over stdio, the same way Claude Code
 ## Things that cost us hours
 
 - **Group Privacy on the Telegram bot.** Turn it off before adding the bot to any group.
-- **No `@`, no agent.** Agents only act when addressed. That includes messages your own backend sends.
+- **No `@`, no agent.** Agents only act when addressed. A message without the tag is ignored, even an obvious "approve all".
 - **Sessions persist.** After you change an agent's `CLAUDE.md`, someone must send `!reset-all-agents` in the group. An agent following its old rules is the most confusing bug you'll meet.
 - **Every step is visible.** The "Worked for 9s" card shows each tool call behind a reply. We cut ours down by giving each agent one tool per job and telling it never to retry a refused call.
 - **Write for the group, not for a log.** Our first replies had ids, markdown and timestamps. A short style guide in `CLAUDE.md` fixed it: plain text, at most six lines, staff names, and one question at the end with the exact reply to send.
