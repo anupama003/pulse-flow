@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { BedDouble, Building2, CalendarPlus, ConciergeBell, FlaskConical, HelpCircle, LogOut, MonitorPlay, Pill, ShieldCheck, Stethoscope } from "lucide-react";
 import { switchUser } from "@/app/actions/session";
-import { can, MODULES, type Role } from "@/lib/rbac";
+import { can, homeFor, MODULES, type Role } from "@/lib/rbac";
 import { PulseFlowFooter, PulseFlowLogo, PulseFlowMark } from "./brand/PulseFlowLogo";
 import PersonaMenu, { initials, ROLE_META, type PersonaUser } from "./PersonaMenu";
 
@@ -50,7 +50,8 @@ export default function AppShell({
   const colleagues = shell.users.filter((u) => u.facilityName === me.facilityName);
   const entries = MODULES.flatMap((m): { href: string; label: string; via: PersonaUser | null }[] => {
     if (can(me.role, m.perm)) return [{ href: m.href, label: m.label, via: null }];
-    const via = colleagues.find((u) => can(u.role, m.perm));
+    // Prefer the colleague whose own home is this module (the pharmacist for Pharmacy), not the admin.
+    const via = colleagues.find((u) => homeFor(u.role) === m.href) ?? colleagues.find((u) => can(u.role, m.perm));
     return via ? [{ href: m.href, label: m.label, via }] : [];
   });
   const openAs = (href: string, userId: string) =>
@@ -93,7 +94,7 @@ export default function AppShell({
                   <Icon className="size-5 shrink-0" />
                   <span className="min-w-0 flex-1 truncate">
                     {label}
-                    {via && <span className="block truncate text-[11px] text-white/45">as {via.name.replace(/^Dr\.?\s+/, "Dr. ").split(" ").slice(0, 2).join(" ")}</span>}
+                    {via && <span className="block truncate text-[11px] text-white/45">as {via.name}</span>}
                   </span>
                   {!!badge && <span className="grid size-5 place-items-center rounded-full bg-butter-100 text-[10px] font-bold text-butter-700">{badge}</span>}
                 </>
