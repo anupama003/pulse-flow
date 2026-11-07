@@ -2,7 +2,7 @@
 
 One page per person. Send each teammate their section; they can keep it open on their phone while recording.
 
-The lines are written the way an Indian ward actually talks: English clinical terms, Hindi in between, short forms (pyelo, inj, KFT, RT feeds). Speak them with Wispr Flow or paste them. The agents understand the mix; the commands that matter (bed numbers, "approve", order ids) are kept unambiguous.
+Doctors' lines are in English, as handovers and consultant dictation must be, with the short forms Indian wards use (pyelo, inj, KFT, RT feeds). The front desk speaks the way the OPD counter does, in Hinglish. Speak the lines with Wispr Flow or paste them. Bed numbers and order ids are kept explicit so the agents can't misread them.
 
 **The one rule:** to talk to an agent, start the message with `@` and its name. Anything without a tag is ordinary chat, and the agents ignore it.
 
@@ -34,15 +34,15 @@ Then send `!reset-all-agents` in **Lotus Ward**, **Lotus Escalations**, **Lotus 
 **Scene 1, the night handover, around 3 AM.** Hold Wispr Flow and say it, or paste:
 
 ```
-@lotus-ward-scribe Sir, night handover. Bed 21 Fatima Khan, pyelo with AKI, inj ceftriaxone 1 gram BD chal raha hai. Patient stable hai, but 2 baje BP 80 by 50 tha, pulse 104. 4 baje BP repeat karna hai, aur subah 8 baje KFT bhejna hai. Bed 7 Meera Iyer, DKA resolved, sugars 140 se 180 on basal-bolus, khana theek kha rahi hai, Menon sir ke round ke baad discharge.
+@lotus-ward-scribe Sir, night handover. Bed 21 Fatima Khan, pyelo with AKI, on inj ceftriaxone 1 gram BD. Patient is stable, but BP at 2 AM was 80 by 50, pulse 104. Repeat BP at 4 AM and send KFT at 8 in the morning. Bed 7 Meera Iyer, DKA resolved, sugars 140 to 180 on basal-bolus, taking orally well, discharge after Menon sir's round.
 ```
 
-You'll see: two short drafts. Bed 21 is marked critical even though you said "stable hai", because the BP rule overrode it. Don't approve them; that's Dr. Menon's line.
+You'll see: two short drafts. Bed 21 is marked critical even though you said "stable", because the BP rule overrode it. Don't approve them; that's Dr. Menon's line.
 
 **Scene 3, the coordinator asks you.** After the host runs the 06:45 check, the coordinator writes "Dr. Rahul, 2 things from the night: ICU-2 … P-4 …". Reply:
 
 ```
-@lotus-ward-coordinator ICU-2 ka ABG aur lactate ho gaya, sample lab mein de diya
+@lotus-ward-coordinator ICU-2 ABG and lactate done, sample sent to lab
 ```
 
 You'll see: the ICU-2 task marked done by Dr. Rahul. If it asks you to confirm instead, send `@lotus-ward-coordinator done ICU-2`. Leave P-4 alone; that's what gets escalated.
@@ -72,14 +72,14 @@ You'll see: a token, room and doctor, and "send him straight in". Lotus Escalati
 **Scene 6, Lotus Pharmacy & Lab: you're the pharmacist now.** The host remaps you to Farhan (pharmacist) between takes. Then, one message at a time:
 
 ```
-@lotus-fulfilment DER-001 ki dawai nikal rahe hain
+@lotus-fulfilment DER-001 preparing
 ```
 
 ```
-@lotus-fulfilment DER-001 ready hai, patient ko counter 2 pe bhej do
+@lotus-fulfilment DER-001 ready, send the patient to counter 2
 ```
 
-You'll see: DER-001 moved to preparing, then to ready. (Optional: `@lotus-fulfilment DER-001 de diya` before preparing shows the agent refusing to skip a step.)
+You'll see: DER-001 moved to preparing, then to ready. (Optional: `@lotus-fulfilment DER-001 dispensed` before preparing shows the agent refusing to skip a step.)
 
 ---
 
@@ -88,7 +88,7 @@ You'll see: DER-001 moved to preparing, then to ready. (Optional: `@lotus-fulfil
 **Scene 2, Lotus Ward: approve Rahul's two notes** (after Anjali is refused):
 
 ```
-@lotus-ward-scribe 21 aur 7 dono approve. 21 ka BP 4 baje phir se check karna.
+@lotus-ward-scribe Approve 21 and 7. Recheck BP for 21 at 4 AM.
 ```
 
 You'll see: both approved, under your name. Name the beds; don't say "approve all": that would also approve P-4's waiting note, and scene 3 needs it.
@@ -108,7 +108,7 @@ npm run switch:nudge -- --at 07:15
 You'll see, in **Lotus Escalations**: "Dr. Menon, still open after a reminder to Dr. Rahul: P-4 Aarav Sharma: handover note waiting…". Close it from **Lotus Ward**:
 
 ```
-@lotus-ward-scribe P-4 approve
+@lotus-ward-scribe Approve P-4
 ```
 
 (Repeating 06:45 instead of 07:15 makes the coordinator hold off, because its reminder went out seconds ago.)
@@ -116,13 +116,13 @@ You'll see, in **Lotus Escalations**: "Dr. Menon, still open after a reminder to
 **Scene 4, Lotus Ward: rounds after OPD.**
 
 ```
-@lotus-ward-scribe ICU-2 rounds: BP ab better hai, 96 by 60 on norad 0.05. MAP theek hai, toh ICU registrar ko call karne ki zarurat nahi. Norad 12 baje tak wean off karo, aur RT feeds start karo.
+@lotus-ward-scribe ICU-2 rounds: BP better at 96 by 60 on norad 0.05. MAP is fine, so no need to call the ICU registrar. Wean off norad by 12 noon and start RT feeds.
 ```
 
 You'll see: the updated plan (new tasks, the registrar call stopped) and a request for your approval. Then:
 
 ```
-@lotus-ward-scribe ICU-2 approve
+@lotus-ward-scribe Approve ICU-2
 ```
 
 **Scene 6, web app: sign a prescription.** In `/opd`, switch to Dr. Arvind Rao (name pill, top right) → **Call next** → dictate → **Sign**. Pulse Flow posts the signed prescription in Lotus Pharmacy & Lab. Then Anjali plays the pharmacist.

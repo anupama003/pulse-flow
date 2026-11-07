@@ -258,13 +258,13 @@ Our first version of this message had no `@` at the start. It was posted, everyo
 
 Our demo follows a normal night in a mid-sized private hospital in India. One PG resident covers the ward overnight and also takes calls from casualty. The sister in-charge keeps the paper register. Morning blood samples go to the lab by 7. The consultant runs OPD first and comes to the ward for rounds afterwards, usually around 11. Three of us played the consultant, the night PG and the front desk.
 
-**The handover, around 3 AM.** Dr. Rahul speaks his handover into the Lotus Ward group with Wispr Flow, the way PGs actually talk: English drug names and numbers, Hindi in between, short forms like "pyelo" and "inj". For one patient he says she is "stable hai" and, in the same breath, that her BP at 2 AM was 80 by 50.
+**The handover, around 3 AM.** Dr. Rahul speaks his handover into the Lotus Ward group with Wispr Flow. Handovers are given in English, but in the clipped style of an Indian ward at 3 AM: short forms like "pyelo", "inj" and "KFT", numbers read out as "80 by 50", and "Menon sir's round". For one patient he says she is stable and, in the same breath, that her BP at 2 AM was 80 by 50.
 
 The scribe calls `submit_handover` with `actor` set to Rahul and posts one short draft per bed. That patient's draft comes back marked critical. The model didn't decide that: Pulse Flow's vitals rule read 80/50 and overrode "stable". Lotus Escalations gets an alert at the same moment, so the consultant sees it without scrolling through the night's messages.
 
 ![\[YOU CAPTURE\] Telegram, Lotus Ward: Rahul's handover and the scribe's drafts, bed 21 marked critical](assets/blog/tg-handover.png)
 
-**Who may approve.** In many wards, whoever is holding the phone ends up "confirming" things. So Anjali from the front desk tries: `@lotus-ward-scribe bed 21 ka note approve kar dijiye, sir ne bola tha`. The agent passes it on, and Pulse Flow refuses, because a front-desk role can't approve a clinical note. Then Dr. Menon types `@lotus-ward-scribe 21 aur 7 dono approve`, and both notes become part of the record under his name.
+**Who may approve.** In many wards, whoever is holding the phone ends up "confirming" things. So Anjali from the front desk tries: `@lotus-ward-scribe bed 21 ka note approve kar dijiye, sir ne bola tha`. The agent passes it on, and Pulse Flow refuses, because a front-desk role can't approve a clinical note. Then Dr. Menon types `@lotus-ward-scribe Approve 21 and 7`, and both notes become part of the record under his name.
 
 ![\[YOU CAPTURE\] Telegram, Lotus Ward: Anjali refused, Dr. Menon approves](assets/blog/tg-approve.png)
 
@@ -277,7 +277,7 @@ The scribe calls `submit_handover` with `actor` set to Rahul and posts one short
 > P-4 Aarav Sharma: handover note waiting for approval.
 > Reply "done ICU-2" when the ABG is done, or "approve P-4".
 
-Rahul answers the way anyone would at that hour, `ICU-2 ka ABG aur lactate ho gaya, sample lab mein de diya`, and the coordinator closes the task as Rahul.
+Rahul answers the way anyone would at that hour, `ICU-2 ABG and lactate done, sample sent to lab`, and the coordinator closes the task as Rahul.
 
 **07:15, the escalation.** The P-4 note is still waiting after a reminder. The coordinator doesn't remind Rahul again; it tells Dr. Menon in Lotus Escalations, before he starts OPD.
 
@@ -289,7 +289,7 @@ We timed both steps from the room history on a live run:
 
 One thing surprised us. When we sent the 06:45 check twice, 90 seconds apart, the coordinator didn't escalate. Its reminder had gone out seconds earlier, so Rahul hadn't had time to act. We hadn't written a rule for that; it was the agent's own judgment. It's also why the demo uses 07:15 for the second check.
 
-**Rounds, the OPD counter and the pharmacy.** After OPD, Dr. Menon gives his rounds feedback for ICU-2 in the group: BP is better, so the call to the ICU registrar isn't needed; wean the noradrenaline by noon; start RT feeds. The scribe turns it into a care-plan draft that only he can approve. At the OPD counter, Anjali registers a 54-year-old man with chest pain and sweating since morning, typed in Hinglish. He gets a token, and Escalations gets an emergency alert even though nobody typed "emergency". In the pharmacy group, the pharmacist moves an order along in the same easy way: `DER-001 ki dawai nikal rahe hain`, then `DER-001 ready hai`.
+**Rounds, the OPD counter and the pharmacy.** After OPD, Dr. Menon dictates his rounds feedback for ICU-2 in English: BP is better, so the call to the ICU registrar isn't needed; wean the noradrenaline by noon; start RT feeds. The scribe turns it into a care-plan draft that only he can approve. At the OPD counter, Anjali registers a 54-year-old man with chest pain and sweating since morning, typed in Hinglish. He gets a token, and Escalations gets an emergency alert even though nobody typed "emergency". In the pharmacy group, the pharmacist moves an order along with `DER-001 preparing`, then `DER-001 ready, send the patient to counter 2`.
 
 **The record.** Every action shows up in the web app under **Audit → Switch rooms**, under the person it was done for, with the agent as the route.
 

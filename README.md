@@ -38,12 +38,12 @@ The coordinator's messages are copied from a live run; the scribe's are shortene
 ```
 Lotus Ward
   Dr. Rahul (night PG):  @lotus-ward-scribe Sir, night handover. Bed 21 Fatima Khan, pyelo with AKI …
-                         patient stable hai, but 2 baje BP 80 by 50 tha, pulse 104 … Bed 7 Meera Iyer …
+                         Patient is stable, but BP at 2 AM was 80 by 50, pulse 104 … Bed 7 Meera Iyer …
   ward-scribe:           🔴 Bed 21 · Fatima Khan: critical, BP 80/50 (said "stable"; the vitals rule overrode it)
                          Bed 7 · Meera Iyer: …   Reply "approve 21", "approve all" or "discard 21".
   Anjali (front desk):   @lotus-ward-scribe bed 21 ka note approve kar dijiye, sir ne bola tha
   ward-scribe:           Front desk can't approve clinical notes.            ← refused by Pulse Flow, not the prompt
-  Dr. Menon (consultant): @lotus-ward-scribe 21 aur 7 dono approve
+  Dr. Menon (consultant): @lotus-ward-scribe Approve 21 and 7
   ward-scribe:           ✅ Both approved, under Dr. Menon's name.
 
   Pulse Flow:            @lotus-ward-coordinator 06:45 check: 1 late task, 1 note waiting for approval.
@@ -51,7 +51,7 @@ Lotus Ward
                          ⏰ ICU-2 Vikram Singh: STAT repeat ABG and lactate, due 6 AM, 45 min late.
                          📝 P-4 Aarav Sharma: handover note waiting for approval.
                          Reply "done ICU-2" when the ABG is done, or "approve P-4".
-  Dr. Rahul:             @lotus-ward-coordinator ICU-2 ka ABG aur lactate ho gaya
+  Dr. Rahul:             @lotus-ward-coordinator ICU-2 ABG and lactate done, sample sent to lab
   ward-coordinator:      ✅ ICU-2 ABG and lactate, done by Dr. Rahul.
 
 Lotus Escalations  (half an hour later, P-4 still waiting)

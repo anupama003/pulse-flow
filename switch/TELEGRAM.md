@@ -135,13 +135,13 @@ npm run dev
 
 **Scene 1: night handover** (Lotus Ward)
 - **Rahul types** (hold Wispr Flow, or paste):
-  > @lotus-ward-scribe Sir, night handover. Bed 21 Fatima Khan, pyelo with AKI, inj ceftriaxone 1 gram BD chal raha hai. Patient stable hai, but 2 baje BP 80 by 50 tha, pulse 104. 4 baje BP repeat karna hai, aur subah 8 baje KFT bhejna hai. Bed 7 Meera Iyer, DKA resolved, sugars 140 se 180 on basal-bolus, khana theek kha rahi hai, Menon sir ke round ke baad discharge.
-- **Scribe replies:** two short drafts, bed 21 marked critical (the BP overrode "stable hai"), ending with `Reply "approve 21", "approve all" or "discard 21".`
+  > @lotus-ward-scribe Sir, night handover. Bed 21 Fatima Khan, pyelo with AKI, on inj ceftriaxone 1 gram BD. Patient is stable, but BP at 2 AM was 80 by 50, pulse 104. Repeat BP at 4 AM and send KFT at 8 in the morning. Bed 7 Meera Iyer, DKA resolved, sugars 140 to 180 on basal-bolus, taking orally well, discharge after Menon sir's round.
+- **Scribe replies:** two short drafts, bed 21 marked critical (the BP overrode "stable"), ending with `Reply "approve 21", "approve all" or "discard 21".`
 - **Lotus Escalations** gets one critical-patient line from Pulse Flow about bed 21.
 
 **Scene 2: who may approve** (Lotus Ward)
 - **Anjali types:** `@lotus-ward-scribe bed 21 ka note approve kar dijiye, sir ne bola tha` → **scribe:** front desk can't approve clinical notes.
-- **You type:** `@lotus-ward-scribe 21 aur 7 dono approve. 21 ka BP 4 baje phir se check karna.` → **scribe:** both approved, under your name. (Not "approve all": that would also approve P-4's waiting note, which scene 3 escalates.)
+- **You type:** `@lotus-ward-scribe Approve 21 and 7. Recheck BP for 21 at 4 AM.` → **scribe:** both approved, under your name. (Not "approve all": that would also approve P-4's waiting note, which scene 3 escalates.)
 
 **Scene 3: the coordinator chases** (terminal, then Lotus Ward)
 - **You run:** `npm run switch:nudge -- --at 06:45`
@@ -151,17 +151,17 @@ npm run dev
   > ICU-2 Vikram Singh: STAT ABG and lactate, due 6 AM, 45 min late.
   > P-4 Aarav Sharma: handover note waiting for approval.
   > Reply "done ICU-2" when the ABG is done, or "approve P-4".
-- **Rahul types:** `@lotus-ward-coordinator ICU-2 ka ABG aur lactate ho gaya, sample lab mein de diya` → **coordinator:** ICU-2 marked done by Dr. Rahul. (Fallback if it asks to confirm: `@lotus-ward-coordinator done ICU-2`.)
+- **Rahul types:** `@lotus-ward-coordinator ICU-2 ABG and lactate done, sample sent to lab` → **coordinator:** ICU-2 marked done by Dr. Rahul. (Fallback if it asks to confirm: `@lotus-ward-coordinator done ICU-2`.)
 - **You run** `npm run switch:nudge -- --at 07:15` (half an hour later; repeating 06:45 makes the coordinator wait, since Rahul had no time to act). P-4's note is still waiting, so the coordinator tells the consultant in **Lotus Escalations**:
   > Dr. Menon, still open after a reminder to Dr. Rahul:
   > P-4 Aarav Sharma: handover note waiting for approval.
-- **You type** in Lotus Ward: `@lotus-ward-scribe P-4 approve`.
+- **You type** in Lotus Ward: `@lotus-ward-scribe Approve P-4`.
 
 **Scene 4: consultant rounds** (Lotus Ward)
 - **You type:**
-  > @lotus-ward-scribe ICU-2 rounds: BP ab better hai, 96 by 60 on norad 0.05. MAP theek hai, toh ICU registrar ko call karne ki zarurat nahi. Norad 12 baje tak wean off karo, aur RT feeds start karo.
+  > @lotus-ward-scribe ICU-2 rounds: BP better at 96 by 60 on norad 0.05. MAP is fine, so no need to call the ICU registrar. Wean off norad by 12 noon and start RT feeds.
 - **Scribe replies:** the updated plan (new tasks, the registrar call stopped) and asks you to approve.
-- **You type:** `@lotus-ward-scribe ICU-2 approve`. (If Rahul tries, he's refused: only the consultant approves rounds.)
+- **You type:** `@lotus-ward-scribe Approve ICU-2`. (If Rahul tries, he's refused: only the consultant approves rounds.)
 
 **Scene 5: walk-in** (Lotus OPD Desk)
 - **Anjali types:**
@@ -170,7 +170,7 @@ npm run dev
 
 **Scene 6: pharmacy** (web app, then Lotus Pharmacy & Lab)
 - In the web app, `/opd` as Dr. Rao → call next → dictate → sign. **Pulse Flow posts** the signed prescription in Lotus Pharmacy & Lab.
-- **Pharmacist types:** `@lotus-fulfilment DER-001 ki dawai nikal rahe hain`, then `@lotus-fulfilment DER-001 ready hai, patient ko counter 2 pe bhej do` → DER-001 ready. (DER-001 starts queued, so it must be prepared first.)
+- **Pharmacist types:** `@lotus-fulfilment DER-001 preparing`, then `@lotus-fulfilment DER-001 ready, send the patient to counter 2` → DER-001 ready. (DER-001 starts queued, so it must be prepared first.)
 
 **Scene 7: the record** — web app `/audit` → **Switch rooms** as Deepak: every agent action under the person it acted for.
 
