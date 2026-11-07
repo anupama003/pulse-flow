@@ -14,7 +14,7 @@ export const CONSOLE_SHOT: string | undefined = undefined;
 const SCENES: { C: React.FC; frames: number }[] = [
   { C: Open, frames: 170 },
   { C: Groups, frames: 230 },
-  { C: Handover, frames: 540 },
+  { C: Handover, frames: 450 },
   { C: FollowUp, frames: 600 },
   { C: Rounds, frames: 540 },
   { C: WalkIn, frames: 400 },

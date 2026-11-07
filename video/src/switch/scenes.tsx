@@ -115,28 +115,23 @@ export const Handover: React.FC = () => (
     <Callout at={295} color={C.blush500} style={{ left: 90, top: 330 }}>
       The vitals rule overrides “stable”
     </Callout>
-    <Callout at={470} color={C.mint400} style={{ left: 90, top: 410 }}>
-      Approved under Dr. Menon’s name
+    <Callout at={360} color={C.lav400} style={{ left: 90, top: 410 }}>
+      Dr. Menon sees it in Escalations
     </Callout>
     <SlideIn at={300} style={{ ...LEFT_BOTTOM }}>
-      <ChatWindow {...ESC} width={760} height={360} messages={[agent(312, PF, L.critAlert, undefined, "critical")]} highlight={312} />
+      <ChatWindow {...ESC} width={760} height={420} messages={[agent(312, PF, L.critAlert, undefined, "critical"), agent(370, "lotus-ward-scribe", L.scribeEsc, 8)]} highlight={312} />
     </SlideIn>
     <ChatWindow
       {...WARD}
       style={RIGHT}
       width={900}
       height={940}
-      composing={[
-        { who: RAHUL, text: L.handover, start: 40, sent: 180, wispr: true },
-        { who: MENON, text: L.menonApprove21, start: 365, sent: 405 },
-      ]}
+      composing={[{ who: RAHUL, text: L.handover, start: 40, sent: 180, wispr: true }]}
       messages={[
         human(180, RAHUL, L.handover),
         agent(215, "lotus-ward-scribe", L.scribeStructuring),
         agent(290, "lotus-ward-scribe", L.draft21, 14, "critical"),
         agent(318, "lotus-ward-scribe", L.draft7),
-        human(405, MENON, L.menonApprove21),
-        agent(462, "lotus-ward-scribe", L.scribeApproved, 6, "ok"),
       ]}
     />
   </Stage>
@@ -173,8 +168,7 @@ export const FollowUp: React.FC = () => (
       height={940}
       composing={[{ who: RAHUL, text: L.rahulDone, start: 420, sent: 470 }]}
       messages={[
-        human(-1, MENON, L.menonApprove21),
-        agent(-1, "lotus-ward-scribe", L.scribeApproved, undefined, "ok"),
+        agent(-1, "lotus-ward-scribe", L.draft7),
         agent(70, PF, L.nudge0700),
         agent(140, "lotus-ward-coordinator", L.remind, 8),
         agent(305, PF, L.nudge0800),
@@ -229,7 +223,7 @@ export const WalkIn: React.FC = () => (
       Red flag found by Pulse Flow, not typed
     </Callout>
     <SlideIn at={262} style={{ ...LEFT_BOTTOM }}>
-      <ChatWindow {...ESC} width={760} height={380} messages={[agent(280, PF, L.emergency, undefined, "critical")]} highlight={280} />
+      <ChatWindow {...ESC} width={760} height={420} messages={[agent(280, PF, L.emergency, undefined, "critical"), agent(330, "lotus-opd-desk", L.opdEsc, 6)]} highlight={280} />
     </SlideIn>
     <ChatWindow
       title="Lotus OPD Desk"
@@ -302,7 +296,9 @@ const DESK_SHOTS: Shot[] = [
   { src: "app/pharmacy.png", where: "Pharmacy board", label: "Queued → preparing → ready → dispensed" },
   { src: "app/lab.png", where: "Diagnostics board", label: "Ordered → collected → processing → reported" },
   { src: "app/queue.png", where: "Queue TV", label: "The waiting room sees who's next" },
+  { src: "app/booking.png", where: "Patient booking", label: "Patients book by voice, in their own words" },
   { src: "app/audit-switch.png", where: "Audit log · Switch rooms", label: "Every agent action, under a person" },
+  { src: "app/audit-access.png", where: "Audit log · Access log", label: "Who saw what, and why: DPDP-ready" },
 ];
 const Slideshow: React.FC<{ shots: Shot[]; per: number; n: string; eyebrow: string; title: string; hue?: "lav" | "mint" | "powder" | "blush" }> = ({ shots, per, n, eyebrow, title, hue = "lav" }) => {
   const frame = useCurrentFrame();
@@ -314,14 +310,18 @@ const Slideshow: React.FC<{ shots: Shot[]; per: number; n: string; eyebrow: stri
         const last = i === shots.length - 1;
         const op = interpolate(frame, [a, a + 12, a + per, a + per + 12], [0, 1, 1, last ? 1 : 0], clamp);
         return (
-          <Sequence key={s.src} from={a} durationInFrames={last ? per + 60 : per + 14} layout="none">
-            <div style={{ position: "absolute", right: 70, top: 110, opacity: op }}>
-              <AppWindow src={s.src} url={s.where} width={1120} dur={per + 20} origin={s.origin} />
-            </div>
-            <Callout at={6} color={C.lav400} style={{ left: 90, top: 380 }}>
-              {s.label}
-            </Callout>
-          </Sequence>
+          <React.Fragment key={s.src}>
+            <Sequence from={a} durationInFrames={last ? per + 60 : per + 14} layout="none">
+              <div style={{ position: "absolute", right: 70, top: 110, opacity: op }}>
+                <AppWindow src={s.src} url={s.where} width={1120} dur={per + 20} origin={s.origin} />
+              </div>
+            </Sequence>
+            <Sequence from={a} durationInFrames={last ? per + 60 : per} layout="none">
+              <Callout at={6} color={C.lav400} style={{ left: 90, top: 380 }}>
+                {s.label}
+              </Callout>
+            </Sequence>
+          </React.Fragment>
         );
       })}
       <div style={{ position: "absolute", left: 90, top: 470, display: "flex", gap: 10 }}>
