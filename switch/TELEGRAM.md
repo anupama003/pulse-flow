@@ -150,7 +150,7 @@ npm run dev
   > 📝 P-4 Aarav Sharma: handover note waiting for approval.
   > Reply "done ICU-2" when the ABG is done, or "approve P-4".
 - **Rahul types:** `@lotus-ward-coordinator done ICU-2` → **coordinator:** `✅ ICU-2 ABG and lactate, done by Dr. Rahul.`
-- **You run the same command again.** P-4's note is still waiting, so the coordinator tells the consultant in **Lotus Escalations**:
+- **You run** `npm run switch:nudge -- --at 07:15` (half an hour later; repeating 06:45 makes the coordinator wait, since Rahul had no time to act). P-4's note is still waiting, so the coordinator tells the consultant in **Lotus Escalations**:
   > Dr. Menon, still open after a reminder to Dr. Rahul:
   > 📝 P-4 Aarav Sharma: handover note waiting for approval.
 
