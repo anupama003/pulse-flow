@@ -196,7 +196,7 @@ const followupsAt = (at?: string) => (at ? wardFollowups(mostRecentIst(at), { an
 
 const followups = tool({
   name: "ward_followups",
-  description: "What needs chasing: tasks past their stated time (or STAT not done in 30 min) and drafts waiting for approval, with the PG on duty, each patient's consultant and how often each was already nudged. Pass `at` when Pulse Flow's check message names a time (\"06:45 check: …\").",
+  description: "What needs chasing: tasks past their stated time (or STAT not done in 30 min), with the PG on duty, each patient's consultant and how often each was already nudged. Pass `at` when Pulse Flow's check message names a time (\"07:00 check: …\").",
   input: {
     actor,
     at: z.string().regex(/^\d{1,2}:\d{2}$/).optional().describe("IST time of the check from Pulse Flow's message, e.g. 06:45. Omit for now."),

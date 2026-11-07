@@ -39,7 +39,7 @@ We ran Pulse Flow on Telegram, with four groups for a fictional 5-bed demo ward 
 | Telegram group | Agent | What it does |
 |---|---|---|
 | **Lotus Ward** | `lotus-ward-scribe` | Turns a dictated handover, or a consultant's rounds feedback, into one structured note per bed (SBAR: Situation, Background, Assessment, Recommendation). Flags critical patients. Files a doctor's approval. |
-| **Lotus Ward** and **Lotus Escalations** | `lotus-ward-coordinator` | Works like a charge nurse who follows up. Asks the resident on duty about late tasks and notes waiting for approval. If nothing happens after a reminder, it tells the consultant. |
+| **Lotus Ward** and **Lotus Escalations** | `lotus-ward-coordinator` | Works like a charge nurse who follows up. Reminds the resident on duty about a late task. If it's still not done at the next check, it tells the consultant. |
 | **Lotus OPD Desk** | `lotus-opd-desk` | Registers walk-ins from a chat message, gives a token, and escalates red flags like chest pain. |
 | **Lotus Pharmacy & Lab** | `lotus-fulfilment` | Moves medicine and lab orders along ("DER-001 ready") as the pharmacist who said it. |
 | all four | `pulse-flow-events` | Not an AI. This is Pulse Flow itself, posting critical patients, emergencies, signed prescriptions and the coordinator's wake-up checks. |
@@ -238,14 +238,11 @@ The coordinator has no schedule of its own. Every 15 minutes, `npm run switch:nu
 
 ```ts
 export function buildWardNudge(f: WardFollowups, coordinator: string): RoomMessage | null {
-  if (!f.overdueTasks.length && !f.staleDrafts.length) return null; // quiet wards get no message
-  const counts = [
-    f.overdueTasks.length ? plural(f.overdueTasks.length, "late task") : "",
-    f.staleDrafts.length ? `${plural(f.staleDrafts.length, "note")} waiting for approval` : "",
-  ].filter(Boolean);
+  if (!f.overdueTasks.length) return null; // quiet wards get no message
   return {
     event: "WARD_NUDGE", room: "ward",
-    text: `@${coordinator} ${istHhmm(new Date(f.checkedAt))} check: ${counts.join(", ")}.`,
+    itemIds: f.overdueTasks.map((t) => t.taskId), // so the next check knows who was already reminded
+    text: `@${coordinator} ${istHhmm(new Date(f.checkedAt))} check: ${plural(f.overdueTasks.length, "late task")}.`,
   };
 }
 ```
@@ -256,44 +253,44 @@ Our first version of this message had no `@` at the start. It was posted, everyo
 
 ## One night on Lotus Ward
 
-Our demo follows a normal night in a mid-sized private hospital in India. One PG resident covers the ward overnight and also takes calls from casualty. The sister in-charge keeps the paper register. Morning blood samples go to the lab by 7. The consultant runs OPD first and comes to the ward for rounds afterwards, usually around 11. Three of us played the consultant, the night PG and the front desk.
+Our demo follows a normal night in a mid-sized private hospital in India. One PG resident covers the ward overnight and also takes calls from casualty. In the morning a day PG takes over the ward. The consultant runs OPD first and comes to the ward for rounds afterwards. Three of us played the consultant, the night PG and the day PG.
 
-**The handover, around 3 AM.** Dr. Rahul speaks his handover into the Lotus Ward group with Wispr Flow. Handovers are given in English, but in the clipped style of an Indian ward at 3 AM: short forms like "pyelo", "inj" and "KFT", numbers read out as "80 by 50", and "Menon sir's round". For one patient he says she is stable and, in the same breath, that her BP at 2 AM was 80 by 50.
+**The handover.** Dr. Rahul, the night PG, speaks his handover to Dr. Priya into the Lotus Ward group with Wispr Flow. Handovers are given in English, but in the clipped style of an Indian ward: short forms like "pyelo", "inj" and "KFT", numbers read out as "80 by 50", and "Menon sir's round". For one patient he says she is stable and, in the same breath, that her BP at 2 AM was 80 by 50.
 
-The scribe calls `submit_handover` with `actor` set to Rahul and posts one short draft per bed. That patient's draft comes back marked critical. The model didn't decide that: Pulse Flow's vitals rule read 80/50 and overrode "stable". Lotus Escalations gets an alert at the same moment, so the consultant sees it without scrolling through the night's messages.
+The scribe calls `submit_handover` with `actor` set to Rahul and posts one short draft per bed. That patient's draft comes back marked critical. The model didn't decide that: Pulse Flow's vitals rule read 80/50 and overrode "stable". Lotus Escalations gets an alert at the same moment, so Dr. Menon sees it without scrolling through the night's messages.
 
 ![\[YOU CAPTURE\] Telegram, Lotus Ward: Rahul's handover and the scribe's drafts, bed 21 marked critical](assets/blog/tg-handover.png)
 
-**Who may approve.** In many wards, whoever is holding the phone ends up "confirming" things. So Anjali from the front desk tries: `@lotus-ward-scribe bed 21 ka note approve kar dijiye, sir ne bola tha`. The agent passes it on, and Pulse Flow refuses, because a front-desk role can't approve a clinical note. Then Dr. Menon types `@lotus-ward-scribe Approve 21 and 7`, and both notes become part of the record under his name.
+**Taking over.** Dr. Priya reads the drafts and types `@lotus-ward-scribe Approve 21 and 7`. Both notes become part of the record under her name, and their tasks appear on the ward screen. Only doctors can approve; anyone else who tries through the agent is refused by Pulse Flow, not by the prompt.
 
-![\[YOU CAPTURE\] Telegram, Lotus Ward: Anjali refused, Dr. Menon approves](assets/blog/tg-approve.png)
+![\[YOU CAPTURE\] Telegram, Lotus Ward: Dr. Priya approves the handover](assets/blog/tg-approve.png)
 
-**06:45, the follow-up.** This is the part the sister in-charge normally does by walking around with the register. ICU-2 had a STAT blood gas due at 6 AM, and another patient's handover note was never approved. Pulse Flow posts its check, and the coordinator writes to the PG on duty. These are its real messages from a live run:
+**A late task.** This is the part a sister in-charge normally does by walking around with the register. ICU-2 had a STAT blood gas due at 6 AM. At 7:00, Pulse Flow's check finds it late and wakes the coordinator, which reminds the PG on duty:
 
-> **pulse-flow-events:** @lotus-ward-coordinator 06:45 check: 1 late task, 1 note waiting for approval.
+> **pulse-flow-events:** @lotus-ward-coordinator 07:00 check: 1 late task.
 >
-> **lotus-ward-coordinator:** Dr. Rahul, 2 things from the night:
-> ICU-2 Vikram Singh: STAT repeat ABG and lactate, due 6 AM, 45 min late.
-> P-4 Aarav Sharma: handover note waiting for approval.
-> Reply "done ICU-2" when the ABG is done, or "approve P-4".
+> **lotus-ward-coordinator:** Dr. Rahul, ICU-2 Vikram Singh: STAT repeat ABG and lactate was due at 6 AM, now 1 hour late.
+> Reply "done ICU-2" once it's done.
 
-Rahul answers the way anyone would at that hour, `ICU-2 ABG and lactate done, sample sent to lab`, and the coordinator closes the task as Rahul.
+Rahul is in casualty and doesn't reply. At 8:00 the task is still open, so the coordinator doesn't remind him again. It tells the consultant in Lotus Escalations, before he starts OPD:
 
-**07:15, the escalation.** The P-4 note is still waiting after a reminder. The coordinator doesn't remind Rahul again; it tells Dr. Menon in Lotus Escalations, before he starts OPD.
+> **lotus-ward-coordinator:** Dr. Menon, ICU-2 Vikram Singh: STAT repeat ABG and lactate, due 6 AM, still not done an hour after the reminder.
 
 ![\[YOU CAPTURE\] Telegram, Lotus Escalations: the coordinator's message to Dr. Menon](assets/blog/tg-escalation.png)
+
+Dr. Priya does the ABG and replies `ICU-2 ABG and lactate done, sample sent to lab`. The coordinator closes the task in her name.
+
+That is the whole rule: remind the PG first, and tell the consultant only if the task is still not done at the next check. Code decides what is late and how many times it was already chased. The agent decides how to word it and whom to address.
 
 We timed both steps from the room history on a live run:
 
 ![The coordinator, measured on a live run](assets/blog/chart-coordinator.png)
 
-One thing surprised us. When we sent the 06:45 check twice, 90 seconds apart, the coordinator didn't escalate. Its reminder had gone out seconds earlier, so Rahul hadn't had time to act. We hadn't written a rule for that; it was the agent's own judgment. It's also why the demo uses 07:15 for the second check.
-
-**Rounds, the OPD counter and the pharmacy.** After OPD, Dr. Menon dictates his rounds feedback for ICU-2 in English: BP is better, so the call to the ICU registrar isn't needed; wean the noradrenaline by noon; start RT feeds. The scribe turns it into a care-plan draft that only he can approve. At the OPD counter, Anjali registers a 54-year-old man with chest pain and sweating since morning, typed in Hinglish. He gets a token, and Escalations gets an emergency alert even though nobody typed "emergency". In the pharmacy group, the pharmacist moves an order along with `DER-001 preparing`, then `DER-001 ready, send the patient to counter 2`.
+**Rounds, the OPD counter and the pharmacy.** After OPD, Dr. Menon dictates his rounds feedback for ICU-2 in English: BP is better, so the call to the ICU registrar isn't needed; wean the noradrenaline by noon; start RT feeds. The scribe turns it into a care-plan draft that only he can approve; if Rahul tries, he is refused. At the OPD counter, the front desk registers a 54-year-old man with chest pain and sweating since morning, typed in Hinglish the way the counter talks. He gets a token, and Escalations gets an emergency alert even though nobody typed "emergency". In the pharmacy group, the pharmacist moves an order along with `DER-001 preparing`, then `DER-001 ready, send the patient to counter 2`.
 
 **The record.** Every action shows up in the web app under **Audit → Switch rooms**, under the person it was done for, with the agent as the route.
 
-![Audit → Switch rooms, from the live run: the 06:45 and 07:15 checks and each lookup the coordinator made](assets/blog/app-audit-switch.png)
+![\[YOU CAPTURE after the take\] Audit → Switch rooms: the 07:00 and 08:00 checks and each lookup the coordinator made](assets/blog/app-audit-switch.png)
 
 ## The same morning without Switch
 
@@ -303,8 +300,8 @@ We wanted the difference to be easy to check, so Pulse Flow says plainly when Sw
 |---|---|---|
 | Header | **Switch on** | **Switch off** |
 | Critical patient in a handover | Posted to the escalations group on Telegram | "Not sent: Switch is off. Only people looking at this screen will know." |
-| Late STAT test at 06:45 | The coordinator asks the PG on duty by name | The check lists it, and nothing else happens |
-| Still open at 07:15 | Escalated to the consultant | Still sitting on the ward screen |
+| Late STAT test at 7:00 | The coordinator reminds the PG on duty by name | The check lists it, and nothing else happens |
+| Still open at 8:00 | The consultant is told | Still sitting on the ward screen |
 | Approving from the ward group, the OPD counter or the pharmacy | Done in chat, under the person who asked | Not possible: the agents don't exist without Switch |
 | Audit → Switch rooms | Posts marked "sent" | Posts marked "not sent (Switch off)" |
 

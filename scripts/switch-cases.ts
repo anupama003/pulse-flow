@@ -103,6 +103,11 @@ test("actor: PULSE_FLOW_CHAT_HANDLES maps chat handles; unknown target ids are i
   assert.equal(matchStaff("night-pg", staff, handles), "u-rahul");
   assert.equal(matchStaff("ghost", staff, handles), null);
 });
+test("actor: a handle mapped \"@agent\" plays that role only in that agent's group", () => {
+  const raw = "teammate=u-rahul, teammate=u-kavya@fulfilment";
+  assert.equal(matchStaff("teammate", staff, chatHandleMap(raw, "ward-scribe")), "u-rahul");
+  assert.equal(matchStaff("teammate", staff, chatHandleMap(raw, "fulfilment")), "u-kavya");
+});
 
 // ── Agent toolsets and template stay in sync with the tool server ────────────
 test("every agent's toolset names real tools, and every tool belongs to an agent", () => {
@@ -149,23 +154,22 @@ test("late: 15 min grace after the stated time; STAT with no time is late after 
   assert.equal(lateBy({ priority: "ROUTINE", dueText: null, createdAt: ordered }, ist("09:00")), null);
 });
 
-const followups = (o: Partial<WardFollowups> = {}): WardFollowups => ({ checkedAt: "", pgOnDuty: "Dr. Priya Raghavan", overdueTasks: [], staleDrafts: [], ...o });
+const followups = (o: Partial<WardFollowups> = {}): WardFollowups => ({ checkedAt: "", pgOnDuty: "Dr. Priya Raghavan", overdueTasks: [], ...o });
 test("nudge: nothing late → no message at all (quiet wards get no noise)", () => {
   assert.equal(buildWardNudge(followups(), "lotus-ward-coordinator"), null);
 });
 test("nudge: one short line people can read, tagging the coordinator with the check time; details stay out of chat", () => {
   const m = buildWardNudge(
     followups({
-      checkedAt: ist("06:45").toISOString(),
-      overdueTasks: [{ taskId: "t1", patientId: "p-a", bed: "ICU-2", patient: "Vikram Singh", task: "Repeat ABG", priority: "STAT", dueText: "6 AM", minutesLate: 20, consultant: "Dr. Suresh Menon", nudgedBefore: 1 }],
-      staleDrafts: [{ noteId: "n1", patientId: "p-e", bed: "21", patient: "Fatima Khan", critical: true, source: "ROUNDS", author: "Dr. Suresh Menon", minutesWaiting: 45, needs: "the consultant", consultant: "Dr. Suresh Menon", nudgedBefore: 0 }],
+      checkedAt: ist("07:00").toISOString(),
+      overdueTasks: [{ taskId: "t1", patientId: "p-a", bed: "ICU-2", patient: "Vikram Singh", task: "Repeat ABG", priority: "STAT", dueText: "6 AM", minutesLate: 60, consultant: "Dr. Suresh Menon", nudgedBefore: 0 }],
     }),
     "lotus-ward-coordinator",
   )!;
   assert.equal(m.room, "ward");
-  assert.equal(m.text, "@lotus-ward-coordinator 06:45 check: 1 late task, 1 note waiting for approval.");
-  assert.deepEqual(m.itemIds, ["t1", "n1"]);
-  assert.deepEqual(m.patientIds, ["p-a", "p-e"]);
+  assert.equal(m.text, "@lotus-ward-coordinator 07:00 check: 1 late task.");
+  assert.deepEqual(m.itemIds, ["t1"]);
+  assert.deepEqual(m.patientIds, ["p-a"]);
 });
 test("nudge: counts read naturally (plural, and only what there is)", () => {
   const task: WardFollowups["overdueTasks"][number] = { taskId: "t", patientId: "p", bed: "7", patient: "M", task: "KFT", priority: "HIGH", dueText: "8 AM", minutesLate: 185, consultant: null, nudgedBefore: 0 };

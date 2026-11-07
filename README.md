@@ -26,37 +26,36 @@ Handovers are where communication failures cluster: they're involved in over hal
 | Group | Agent | What it does |
 |---|---|---|
 | **Ward** | `ward-scribe` | Turns a dictated handover or the consultant's rounds into one structured note per bed (SBAR: Situation, Background, Assessment, Recommendation), flags critical patients, and files a doctor's approval. |
-| **Ward** + **Escalations** | `ward-coordinator` | The charge nurse who chases. Asks the resident on duty about late tasks; tells the consultant if nothing happened after a reminder. |
+| **Ward** + **Escalations** | `ward-coordinator` | The charge nurse who chases. Reminds the resident on duty about a late task; tells the consultant if it's still not done at the next check. |
 | **OPD Desk** | `opd-desk` | Registers walk-ins by chat, gives a token, and escalates red flags like chest pain. |
 | **Pharmacy & Lab** | `fulfilment` | Moves medicine and lab orders along ("DER-001 ready") as the pharmacist who said it. |
 | all four | `pulse-flow-events` | Not an AI: Pulse Flow itself, posting 🔴 critical patients, 🚨 emergencies and 🧾 signed prescriptions into the right group as they happen. |
 
 ## What it looks like on Telegram
 
-The coordinator's messages are copied from a live run; the scribe's are shortened.
+The agents' replies are shortened.
 
 ```
 Lotus Ward
-  Dr. Rahul (night PG):  @lotus-ward-scribe Sir, night handover. Bed 21 Fatima Khan, pyelo with AKI …
+  Dr. Rahul (night PG):  @lotus-ward-scribe Handover to Dr. Priya. Bed 21 Fatima Khan, pyelo with AKI …
                          Patient is stable, but BP at 2 AM was 80 by 50, pulse 104 … Bed 7 Meera Iyer …
-  ward-scribe:           🔴 Bed 21 · Fatima Khan: critical, BP 80/50 (said "stable"; the vitals rule overrode it)
+  ward-scribe:           Bed 21 · Fatima Khan: CRITICAL, BP 80/50 (said "stable"; the vitals rule overrode it)
                          Bed 7 · Meera Iyer: …   Reply "approve 21", "approve all" or "discard 21".
-  Anjali (front desk):   @lotus-ward-scribe bed 21 ka note approve kar dijiye, sir ne bola tha
-  ward-scribe:           Front desk can't approve clinical notes.            ← refused by Pulse Flow, not the prompt
-  Dr. Menon (consultant): @lotus-ward-scribe Approve 21 and 7
-  ward-scribe:           ✅ Both approved, under Dr. Menon's name.
+  Dr. Priya (day PG):    @lotus-ward-scribe Approve 21 and 7
+  ward-scribe:           Both approved, under Dr. Priya's name.
 
-  Pulse Flow:            @lotus-ward-coordinator 06:45 check: 1 late task, 1 note waiting for approval.
-  ward-coordinator:      Dr. Rahul, 2 things from the night:
-                         ⏰ ICU-2 Vikram Singh: STAT repeat ABG and lactate, due 6 AM, 45 min late.
-                         📝 P-4 Aarav Sharma: handover note waiting for approval.
-                         Reply "done ICU-2" when the ABG is done, or "approve P-4".
-  Dr. Rahul:             @lotus-ward-coordinator ICU-2 ABG and lactate done, sample sent to lab
-  ward-coordinator:      ✅ ICU-2 ABG and lactate, done by Dr. Rahul.
+  Pulse Flow:            @lotus-ward-coordinator 07:00 check: 1 late task.
+  ward-coordinator:      Dr. Rahul, ICU-2 Vikram Singh: STAT repeat ABG and lactate was due at 6 AM, now 1 hour late.
+                         Reply "done ICU-2" once it's done.
+                         (no reply: Rahul is in casualty)
 
-Lotus Escalations  (half an hour later, P-4 still waiting)
-  ward-coordinator:      Dr. Menon, still open after a reminder to Dr. Rahul:
-                         📝 P-4 Aarav Sharma: handover note waiting for a doctor's approval …
+Lotus Escalations  (08:00, still not done)
+  ward-coordinator:      Dr. Menon, ICU-2 Vikram Singh: STAT repeat ABG and lactate, due 6 AM,
+                         still not done an hour after the reminder.
+
+Lotus Ward
+  Dr. Priya:             @lotus-ward-coordinator ICU-2 ABG and lactate done, sample sent to lab
+  ward-coordinator:      ICU-2 ABG and lactate, done by Dr. Priya.
 ```
 
 Every one of those actions is now in the patient's record and in **Audit → Switch rooms**, under the person who asked.
@@ -91,7 +90,7 @@ Take Switch out (stop Switch Console or remove the `SWITCH_*` lines from `.env`,
 |---|---|---|
 | Header badge | **Switch on** | **Switch off** |
 | Critical patient in a handover | Posted to the escalations group on Telegram | "Not sent: Switch is off. Only people looking at this screen will know." |
-| `npm run switch:nudge -- --at 06:45` | The coordinator asks the PG on duty, then escalates to the consultant | Lists the late items and says nobody was messaged |
+| `npm run switch:nudge -- --at 07:00` | The coordinator reminds the PG on duty; at the next check it tells the consultant | Lists the late task and says nobody was messaged |
 | Approvals, walk-ins, pharmacy updates from chat | Done in Telegram, under the person who asked | Not possible: there are no agents |
 | Audit → Switch rooms | "sent" | "not sent (Switch off)" |
 

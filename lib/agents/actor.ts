@@ -9,19 +9,26 @@ import { loadStaff, type SessionUser } from "../staff";
 // A chat display name ("Dr Suresh Menon", "suresh.menon") is matched to a Pulse Flow user in the
 // agent's facility. PULSE_FLOW_CHAT_HANDLES maps chat handles that don't look like the staff name:
 //   PULSE_FLOW_CHAT_HANDLES="anupama=u-menon,night-pg=u-rahul"
+// A mapping can be limited to one agent with "@agent", so one person can play a different role in
+// another group (the day PG on the ward, the front desk at the OPD counter):
+//   PULSE_FLOW_CHAT_HANDLES="teammate=u-priya,teammate=u-anjali@opd-desk,teammate=u-farhan@fulfilment"
 // Production would bind chat accounts to staff accounts through the hospital's SSO instead.
 
 const normalize = (s: string) =>
   s.toLowerCase().replace(/^\s*@/, "").replace(/\bdr\.?\s+/g, "").replace(/[._-]+/g, " ").replace(/\s+/g, " ").trim();
 
-export function chatHandleMap(raw = process.env.PULSE_FLOW_CHAT_HANDLES ?? ""): Map<string, string> {
-  return new Map(
-    raw
-      .split(",")
-      .map((pair) => pair.split("=").map((x) => x.trim()))
-      .filter((kv): kv is [string, string] => kv.length === 2 && !!kv[0] && !!kv[1])
-      .map(([handle, userId]) => [normalize(handle), userId]),
-  );
+export function chatHandleMap(raw = process.env.PULSE_FLOW_CHAT_HANDLES ?? "", agent = process.env.PULSE_FLOW_AGENT?.trim() ?? ""): Map<string, string> {
+  const entries = raw
+    .split(",")
+    .map((pair) => pair.split("=").map((x) => x.trim()))
+    .filter((kv): kv is [string, string] => kv.length === 2 && !!kv[0] && !!kv[1])
+    .map(([handle, target]) => {
+      const [userId, onlyFor] = target.split("@").map((x) => x.trim());
+      return { handle: normalize(handle), userId, onlyFor: onlyFor || null };
+    });
+  // Unscoped mappings first, then this agent's own, so an "@agent" mapping wins for that agent.
+  const forThisAgent = [...entries.filter((e) => !e.onlyFor), ...entries.filter((e) => e.onlyFor === agent)];
+  return new Map(forThisAgent.map((e) => [e.handle, e.userId]));
 }
 
 /** Pure matcher (unit-tested): exact id, mapped handle, full name, then a unique first-name/surname match. */

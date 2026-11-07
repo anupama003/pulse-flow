@@ -2,10 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ClipboardCheck, HeartPulse, ListTodo, ShieldCheck } from "lucide-react";
 import { approveDraft, discardDraft, submitHandover, submitRounds, toggleTask } from "@/app/actions/ward";
 import type { CriticalAlertOutcome, DashboardData, DraftEdits, TaskView, UnmatchedCard, UserView } from "@/lib/types";
-import ActionBoard from "./ActionBoard";
 import AppShell, { type Shell } from "./AppShell";
 import ApprovalQueue from "./ApprovalQueue";
 import DictationBox from "./DictationBox";
@@ -19,11 +17,13 @@ import TaskSidebar from "./TaskSidebar";
 const DRAFT_KEY = "pulse-flow:draft";
 type Filter = "all" | "critical" | "stable";
 
-type NavId = "handover" | "approvals" | "patients" | "checklist" | "board";
+/** One view at a time: a doctor at 3 AM should see one thing, not the whole ward at once. */
+type Tab = "handover" | "approve" | "patients" | "tasks";
 
 export default function Dashboard({ initial, shell }: { initial: DashboardData; shell: Shell }) {
   const [data, setData] = useState(initial);
   const [filter, setFilter] = useState<Filter>("all");
+  const [tab, setTab] = useState<Tab>("handover");
   const [tourOpen, setTourOpen] = useState(false);
   // Server re-render (persona switch, revalidation) → adopt the fresh snapshot.
   useEffect(() => setData(initial), [initial]);
@@ -150,40 +150,55 @@ export default function Dashboard({ initial, shell }: { initial: DashboardData; 
     setRoundsError(null);
   }, []);
 
-  const goTo = (id: NavId) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const show = (t: Tab, f: Filter = "all") => {
+    setFilter(f);
+    setTab(t);
   };
 
   return (
-    <AppShell
-      shell={shell}
-      onHelp={() => setTourOpen(true)}
-      badges={{ "/": data.drafts.length }}
-      toolbar={
-        <div className="flex items-center gap-1 rounded-full bg-white p-1.5 shadow-widget">
-          {(["all", "critical", "stable"] as const).map((f) => (
+    <AppShell shell={shell} onHelp={() => setTourOpen(true)} badges={{ "/": data.drafts.length }}>
+      <div className="mx-auto max-w-6xl">
+        <div id="overview" className="mb-6">
+          <h1 className="text-3xl font-light tracking-tight md:text-5xl">Ward</h1>
+          <p className="mt-1 text-slate-400">
+            Good {greeting()}, {me.name.split(" ").slice(0, 2).join(" ")}.
+          </p>
+          {!shell.switchOn && <SwitchOffNotice />}
+        </div>
+
+        {/* What needs this doctor now: three numbers, each opens its view */}
+        <div data-tour="overview" className="mb-6 grid grid-cols-3 gap-3">
+          <NeedsCard value={criticalCount} label={criticalCount === 1 ? "critical patient" : "critical patients"} tone="blush" onClick={() => show("patients", "critical")} />
+          <NeedsCard value={data.drafts.length} label={data.drafts.length === 1 ? "note to approve" : "notes to approve"} tone="butter" onClick={() => show("approve")} />
+          <NeedsCard value={pendingCount} label={pendingCount === 1 ? "open task" : "open tasks"} tone="lavender" onClick={() => show("tasks")} />
+        </div>
+
+        <nav className="mb-6 flex gap-1 overflow-x-auto rounded-full bg-white p-1.5 shadow-widget">
+          {(
+            [
+              ["handover", "Handover", "dictation", null],
+              ["approve", "To approve", "approvals", data.drafts.length],
+              ["patients", "Patients", "patients", null],
+              ["tasks", "Tasks", "checklist", pendingCount],
+            ] as const
+          ).map(([id, label, tour, count]) => (
             <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`rounded-full px-5 py-2 text-sm capitalize transition ${filter === f ? "bg-ink text-white shadow-md" : "text-slate-500 hover:text-ink"}`}
+              key={id}
+              data-tour={tour === "dictation" ? undefined : tour}
+              onClick={() => show(id)}
+              className={`flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-medium transition ${
+                tab === id ? "bg-ink text-white shadow-md" : "text-slate-500 hover:text-ink"
+              }`}
             >
-              {f === "all" ? "All patients" : f}
+              {label}
+              {!!count && <span className={`rounded-full px-2 text-xs ${tab === id ? "bg-white/20" : "bg-canvas"}`}>{count}</span>}
             </button>
           ))}
-        </div>
-      }
-    >
-          <div id="overview" className="mb-8">
-            <h1 className="text-4xl font-light tracking-tight md:text-6xl">Ward Dashboard</h1>
-            <p className="mt-2 text-slate-400">
-              Good {greeting()}, {me.name.split(" ").slice(0, 2).join(" ")}. Speak the handover. Leave on time.
-            </p>
-            <SwitchNotice on={shell.switchOn} />
-          </div>
+        </nav>
 
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-            {/* Dictation hero */}
-            <div id="handover" data-tour="dictation" className="min-w-0 scroll-mt-6 xl:col-span-8">
+        {tab === "handover" && (
+          <div className="space-y-5">
+            <div id="handover" data-tour="dictation" className="min-w-0">
               <DictationBox
                 fill
                 primary
@@ -192,57 +207,17 @@ export default function Dashboard({ initial, shell }: { initial: DashboardData; 
                 onSubmit={handleHandover}
                 pending={handoverPending}
                 error={handoverError}
-                eyebrow="Shift brain dump"
+                eyebrow="Shift handover"
                 title="Speak your handover"
-                subtitle="Hold your Wispr key and talk through every patient. We'll structure it into SBAR, pull out the tasks, and hand it back to you for approval."
-                placeholder={`"Okay so ICU 2, Vikram, BP 84 over 50 on norad, lactate 4.6, repeat ABG at 6. Bed 7 Meera ready for discharge. Bed 12 Arjun, post-op day 1…"`}
-                buttonLabel="Structure handover"
-                pendingLabel="Structuring…"
+                subtitle="Hold your Wispr key and go bed by bed. Pulse Flow writes one note per patient and pulls out the tasks. Nothing is saved until a doctor approves it."
+                placeholder={`"ICU 2, Vikram, BP 84 by 50 on norad, lactate 4.6, repeat ABG at 6. Bed 7 Meera, ready for discharge after sir's round…"`}
+                buttonLabel="Make notes"
+                pendingLabel="Writing notes…"
               />
             </div>
-
-            {/* Ward overview: pastel tiles (Find Doctor style) */}
-            <section data-tour="overview" className="min-w-0 rounded-[2rem] bg-white p-6 shadow-widget xl:col-span-4">
-              <h2 className="text-xl font-medium">Ward overview</h2>
-              <p className="mb-5 text-sm text-slate-400">Tap a tile to filter patients</p>
-              <div className="grid grid-cols-2 gap-3">
-                <OverviewTile
-                  onClick={() => setFilter("critical")}
-                  active={filter === "critical"}
-                  className="bg-blush-100 text-blush-700"
-                  icon={<HeartPulse className="size-6" />}
-                  value={criticalCount}
-                  label="Critical"
-                />
-                <OverviewTile
-                  onClick={() => setFilter("stable")}
-                  active={filter === "stable"}
-                  className="bg-mint-100 text-mint-700"
-                  icon={<ShieldCheck className="size-6" />}
-                  value={data.patients.length - criticalCount}
-                  label="Stable"
-                />
-                <OverviewTile
-                  onClick={() => goTo("checklist")}
-                  className="bg-lavender-100 text-lavender-700"
-                  icon={<ListTodo className="size-6" />}
-                  value={pendingCount}
-                  label="Pending tasks"
-                />
-                <OverviewTile
-                  onClick={() => goTo("approvals")}
-                  className="bg-butter-100 text-butter-700"
-                  icon={<ClipboardCheck className="size-6" />}
-                  value={data.drafts.length}
-                  label="To approve"
-                />
-              </div>
-            </section>
-
-            {/* Review of the dictation just made */}
             <AnimatePresence>
               {review && (
-                <motion.div className="min-w-0 xl:col-span-12" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+                <motion.div className="min-w-0" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
                   {!!review.alerts?.length && <AlertOutcomes alerts={review.alerts} />}
                   <LiveReview
                     raw={review.raw}
@@ -260,49 +235,55 @@ export default function Dashboard({ initial, shell }: { initial: DashboardData; 
                 </motion.div>
               )}
             </AnimatePresence>
-
-            {/* Everything else awaiting sign-off */}
-            <div id="approvals" data-tour="approvals" className="min-w-0 scroll-mt-6 xl:col-span-12">
-              <ApprovalQueue
-                drafts={queueDrafts}
-                currentUser={me}
-                busyId={busyDraft}
-                errors={draftErrors}
-                onApprove={handleApprove}
-                onDiscard={handleDiscard}
-              />
-            </div>
-
-            {/* Patients (Your Appointments style) */}
-            <section id="patients" data-tour="patients" className="min-w-0 scroll-mt-6 xl:col-span-8">
-              <div className="mb-4 flex items-end justify-between px-1">
-                <div>
-                  <h2 className="text-2xl font-medium tracking-tight md:text-3xl">Your patients</h2>
-                  <p className="text-sm text-slate-400">Tap a card to start live rounds at the bedside.</p>
-                </div>
-                <span className="rounded-full bg-white px-4 py-1.5 text-sm text-slate-500 shadow-widget">{patients.length} shown</span>
-              </div>
-              <motion.div layout className="grid grid-cols-[minmax(0,1fr)] gap-5 sm:grid-cols-2 2xl:grid-cols-3">
-                <AnimatePresence mode="popLayout">
-                  {patients.map((p) => (
-                    <PatientCard key={p.id} patient={p} openTasks={openByPatient.get(p.id) ?? 0} onOpen={() => setSelectedId(p.id)} />
-                  ))}
-                </AnimatePresence>
-              </motion.div>
-              {patients.length === 0 && (
-                <p className="rounded-[2rem] bg-white p-10 text-center text-slate-400 shadow-widget">No patients match this filter.</p>
-              )}
-            </section>
-
-            {/* Ward checklist (Homework style) */}
-            <div id="checklist" data-tour="checklist" className="min-w-0 scroll-mt-6 xl:col-span-4">
-              <TaskSidebar tasks={data.tasks} criticalIds={criticalIds} onToggle={handleToggle} />
-            </div>
-
-            <div id="board" className="min-w-0 scroll-mt-6 xl:col-span-12">
-              <ActionBoard tasks={data.tasks} onToggle={handleToggle} />
-            </div>
           </div>
+        )}
+
+        {tab === "approve" && (
+          <div id="approvals" className="min-w-0">
+            <ApprovalQueue
+              drafts={queueDrafts}
+              currentUser={me}
+              busyId={busyDraft}
+              errors={draftErrors}
+              onApprove={handleApprove}
+              onDiscard={handleDiscard}
+            />
+          </div>
+        )}
+
+        {tab === "patients" && (
+          <section id="patients" className="min-w-0">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-1">
+              <p className="text-sm text-slate-400">Critical patients first. Tap a patient to start rounds.</p>
+              <div className="flex gap-1 rounded-full bg-white p-1 shadow-widget">
+                {(["all", "critical"] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setFilter(f)}
+                    className={`rounded-full px-4 py-1.5 text-sm transition ${filter === f ? "bg-ink text-white" : "text-slate-500 hover:text-ink"}`}
+                  >
+                    {f === "all" ? "All" : "Critical"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <motion.div layout className="grid grid-cols-[minmax(0,1fr)] gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              <AnimatePresence mode="popLayout">
+                {patients.map((p) => (
+                  <PatientCard key={p.id} patient={p} openTasks={openByPatient.get(p.id) ?? 0} onOpen={() => setSelectedId(p.id)} />
+                ))}
+              </AnimatePresence>
+            </motion.div>
+            {patients.length === 0 && <p className="rounded-[2rem] bg-white p-10 text-center text-slate-400 shadow-widget">No critical patients right now.</p>}
+          </section>
+        )}
+
+        {tab === "tasks" && (
+          <div id="checklist" className="min-w-0">
+            <TaskSidebar tasks={data.tasks} criticalIds={criticalIds} onToggle={handleToggle} />
+          </div>
+        )}
+      </div>
 
       <AnimatePresence>
         {selected && (
@@ -330,13 +311,11 @@ export default function Dashboard({ initial, shell }: { initial: DashboardData; 
   );
 }
 
-/** What Switch adds on this screen, said plainly, so running without it visibly does less. */
-function SwitchNotice({ on }: { on: boolean }) {
+/** Only shown when Switch is off: the one thing a doctor must know is that nobody else will be told. */
+function SwitchOffNotice() {
   return (
-    <p className={`mt-3 max-w-3xl rounded-2xl px-4 py-2.5 text-sm ${on ? "bg-mint-50 text-mint-700" : "bg-butter-100 text-butter-700"}`}>
-      {on
-        ? "Switch is on: critical patients go to the escalations group on Telegram, and the ward coordinator agent follows up on late tasks and waiting notes."
-        : "Switch is off: this screen is the only place critical patients and late tasks show up. Nobody is messaged on Telegram, and no agent follows up or escalates."}
+    <p className="mt-3 max-w-3xl rounded-2xl bg-butter-100 px-4 py-2.5 text-sm text-butter-700">
+      Switch is off: critical patients and late tasks only show up on this screen. Nobody is messaged on Telegram, and no agent follows up.
     </p>
   );
 }
@@ -364,35 +343,20 @@ function greeting() {
   return h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
 }
 
-function OverviewTile({
-  icon,
-  value,
-  label,
-  className,
-  active,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  value: number;
-  label: string;
-  className: string;
-  active?: boolean;
-  onClick: () => void;
-}) {
+const TONE = {
+  blush: "bg-blush-100 text-blush-700",
+  butter: "bg-butter-100 text-butter-700",
+  lavender: "bg-lavender-100 text-lavender-700",
+} as const;
+
+function NeedsCard({ value, label, tone, onClick }: { value: number; label: string; tone: keyof typeof TONE; onClick: () => void }) {
   return (
-    <motion.button
-      whileHover={{ y: -3 }}
-      whileTap={{ scale: 0.97 }}
+    <button
       onClick={onClick}
-      className={`flex flex-col items-start gap-3 rounded-3xl p-4 text-left transition ${className} ${
-        active ? "ring-2 ring-ink/80 ring-offset-2" : ""
-      }`}
+      className={`rounded-3xl px-4 py-4 text-left transition hover:-translate-y-0.5 ${value ? TONE[tone] : "bg-white text-slate-400 shadow-widget"}`}
     >
-      <span className="grid size-11 place-items-center rounded-2xl bg-white/70">{icon}</span>
-      <span>
-        <span className="block text-3xl font-light tabular-nums text-ink">{value}</span>
-        <span className="text-sm font-medium">{label}</span>
-      </span>
-    </motion.button>
+      <span className="block text-3xl font-light tabular-nums text-ink">{value}</span>
+      <span className="text-sm font-medium">{label}</span>
+    </button>
   );
 }

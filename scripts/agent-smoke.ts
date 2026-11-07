@@ -161,7 +161,7 @@ async function main() {
     const facility = await base.facility.findUniqueOrThrow({ where: { slug: "lotus-ridge" } });
     const answering = () =>
       runWithCtx({ facilityId: facility.id, actorId: null, actorRole: "SYSTEM", purpose: "test", route: "test" }, () => wardFollowups(later, { answeringCheck: true }));
-    const counts = (f: Awaited<ReturnType<typeof wardFollowups>>) => [...f.overdueTasks.map((t) => t.nudgedBefore), ...f.staleDrafts.map((d) => d.nudgedBefore)];
+    const counts = (f: Awaited<ReturnType<typeof wardFollowups>>) => f.overdueTasks.map((t) => t.nudgedBefore);
 
     const [first] = await runWardChecks({ brief: true, now: later });
     assert.equal(first.facility, "Lotus Ridge Hospital");
@@ -180,9 +180,9 @@ async function main() {
 
   await test("coordinator: ward_followups answers a PG and Pulse Flow's own check (as the system), refuses a pharmacist", async () => {
     const f = await call("ward_followups", { actor: "Dr. Rahul Verma" });
-    assert.ok(Array.isArray(f.overdueTasks) && Array.isArray(f.staleDrafts));
+    assert.ok(Array.isArray(f.overdueTasks));
     for (const sender of ["Pulse Flow", "pulse-flow-events"]) {
-      const s = await call("ward_followups", { actor: sender, at: "06:45" });
+      const s = await call("ward_followups", { actor: sender, at: "07:00" });
       assert.ok(Array.isArray(s.overdueTasks), sender);
     }
     const read = await base.auditLog.findFirst({ where: { route: "switch:smoke-test", actorRole: "SYSTEM" }, orderBy: { at: "desc" } });

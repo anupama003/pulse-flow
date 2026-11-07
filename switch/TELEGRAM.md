@@ -10,11 +10,11 @@ One Telegram account is one staff member. Pick names that match the demo hospita
 
 | Person | Telegram display name | Pulse Flow staff | Does in the demo |
 |---|---|---|---|
-| You (host) | **Dr. Suresh Menon** | `u-menon`, consultant | Rounds feedback, approves notes, gets escalations, signs the Rx in the web app |
-| Member 2 | **Dr. Rahul Verma** | `u-rahul`, night PG | Dictates the 3 AM handover, answers the coordinator's chase |
-| Member 3 | **Anjali Desai** | `u-anjali`, front desk | Registers the walk-in, tries to approve a note (and is refused) |
+| You (host) | **Dr. Suresh Menon** | `u-menon`, consultant | Gets the critical alert and the escalation, dictates rounds, signs the Rx in the web app |
+| Member 2 | **Dr. Rahul Verma** | `u-rahul`, night PG | Hands over the night to the day PG |
+| Member 3 | **Dr. Priya Raghavan** | `u-priya`, day PG (in Lotus Ward) | Takes the handover and approves it, closes the late task |
 
-The pharmacist's part ("DER-001 ready") is done in the web app at `/pharmacy` as Farhan, or by member 3 after you remap them (step 7).
+Member 3 also plays **Anjali Desai** (front desk) in Lotus OPD Desk and **Farhan Sheikh** (pharmacist) in Lotus Pharmacy & Lab. One mapping in `.env` covers all three roles (step 7), so nothing is remapped between scenes. Anjali is not in Lotus Ward.
 
 ## 1. Everyone: a Telegram username and a display name
 
@@ -49,10 +49,10 @@ In Telegram, create four groups. Add the bot and both teammates to each (the hos
 
 | Group name | Members |
 |---|---|
-| **Lotus Ward** | you, Rahul, Anjali, the bot |
+| **Lotus Ward** | you, Rahul, Priya (member 3), the bot |
 | **Lotus Escalations** | you, the bot |
-| **Lotus OPD Desk** | you, Anjali, the bot |
-| **Lotus Pharmacy & Lab** | you, Anjali, the bot |
+| **Lotus OPD Desk** | you, member 3 (as Anjali), the bot |
+| **Lotus Pharmacy & Lab** | you, member 3 (as Farhan), the bot |
 
 Telegram: *New Group* → pick members → name it. To **rename a group** later: open it → tap the group name at the top → **Edit** (pencil) → change the name → Save. Switch keeps the same room when you rename (it tracks the group, not the name), but rename *before* step 6 so the template's room picker shows the final names.
 
@@ -105,10 +105,10 @@ SWITCH_COORDINATOR_AGENT=lotus-ward-coordinator
 If your display names match the staff names (step 1), the agents already know who's who. To be safe, also map the @usernames:
 
 ```bash
-PULSE_FLOW_CHAT_HANDLES=anupama_handle=u-menon,rahul_pf_demo=u-rahul,anjali_pf_demo=u-anjali
+PULSE_FLOW_CHAT_HANDLES=anupama_handle=u-menon,rahul_pf_demo=u-rahul,member3_handle=u-priya,member3_handle=u-anjali@opd-desk,member3_handle=u-farhan@fulfilment
 ```
 
-To let member 3 play the pharmacist for one scene, change `anjali_pf_demo=u-anjali` to `anjali_pf_demo=u-farhan` and restart the agents in Switch Console (they read `.env` when they start). Change it back afterwards. Do this between takes, not on camera: one person is one role.
+`@opd-desk` and `@fulfilment` limit a mapping to that agent's group: member 3 is Dr. Priya in Lotus Ward, Anjali at the OPD desk and Farhan in the pharmacy. After editing `.env`, send `!reset-all-agents` in every group (agents read `.env` when they start).
 
 Restart `npm run dev`. Open **Audit → Switch rooms** as Deepak (admin) to watch every post and agent action.
 
@@ -120,7 +120,7 @@ Restart `npm run dev`. Open **Audit → Switch rooms** as Deepak (admin) to watc
 
 | Who's who | |
 |---|---|
-| **Pulse Flow** (`pulse-flow-events`) | The hospital system. It posts alerts and, for the coordinator, a one-line "06:45 check" that wakes it. Nobody replies to it. |
+| **Pulse Flow** (`pulse-flow-events`) | The hospital system. It posts alerts and, for the coordinator, a one-line "07:00 check" that wakes it. Nobody replies to it. |
 | **Ward scribe** (`@lotus-ward-scribe`) | Turns a dictated handover or rounds note into drafts; files approvals. |
 | **Ward coordinator** (`@lotus-ward-coordinator`) | Chases late tasks: asks the PG first, tells the consultant if it's still open next time. |
 | **OPD desk** (`@lotus-opd-desk`) | Registers walk-ins. |
@@ -133,46 +133,42 @@ npm run db:reset
 npm run dev
 ```
 
-**Scene 1: night handover** (Lotus Ward)
+**Scene 1: handover, night PG to day PG** (Lotus Ward)
 - **Rahul types** (hold Wispr Flow, or paste):
-  > @lotus-ward-scribe Sir, night handover. Bed 21 Fatima Khan, pyelo with AKI, on inj ceftriaxone 1 gram BD. Patient is stable, but BP at 2 AM was 80 by 50, pulse 104. Repeat BP at 4 AM and send KFT at 8 in the morning. Bed 7 Meera Iyer, DKA resolved, sugars 140 to 180 on basal-bolus, taking orally well, discharge after Menon sir's round.
-- **Scribe replies:** two short drafts, bed 21 marked critical (the BP overrode "stable"), ending with `Reply "approve 21", "approve all" or "discard 21".`
-- **Lotus Escalations** gets one critical-patient line from Pulse Flow about bed 21.
+  > @lotus-ward-scribe Handover to Dr. Priya. Bed 21 Fatima Khan, pyelo with AKI, on inj ceftriaxone 1 gram BD. Patient is stable, but BP at 2 AM was 80 by 50, pulse 104. Repeat BP at 4 AM and send KFT at 8 in the morning. Bed 7 Meera Iyer, DKA resolved, sugars 140 to 180 on basal-bolus, taking orally well, discharge after Menon sir's round.
+- **Scribe replies:** one short draft per bed, bed 21 marked critical (the BP overrode "stable"), ending with `Reply "approve 21", "approve all" or "discard 21".`
+- **Lotus Escalations** gets one critical-patient line from Pulse Flow about bed 21, for Dr. Menon.
+- **Priya types:** `@lotus-ward-scribe Approve 21 and 7` → **scribe:** both approved, under her name.
 
-**Scene 2: who may approve** (Lotus Ward)
-- **Anjali types:** `@lotus-ward-scribe bed 21 ka note approve kar dijiye, sir ne bola tha` → **scribe:** front desk can't approve clinical notes.
-- **You type:** `@lotus-ward-scribe Approve 21 and 7. Recheck BP for 21 at 4 AM.` → **scribe:** both approved, under your name. (Not "approve all": that would also approve P-4's waiting note, which scene 3 escalates.)
+**Scene 2: a late task, then the consultant** (terminal, Lotus Ward, Lotus Escalations)
 
-**Scene 3: the coordinator chases** (terminal, then Lotus Ward)
-- **You run:** `npm run switch:nudge -- --at 06:45`
-- **Pulse Flow posts:** `@lotus-ward-coordinator 06:45 check: 1 late task, 1 note waiting for approval.`
-- **Coordinator posts** (to the PG on duty):
-  > Dr. Rahul, 2 things from the night:
-  > ICU-2 Vikram Singh: STAT ABG and lactate, due 6 AM, 45 min late.
-  > P-4 Aarav Sharma: handover note waiting for approval.
-  > Reply "done ICU-2" when the ABG is done, or "approve P-4".
-- **Rahul types:** `@lotus-ward-coordinator ICU-2 ABG and lactate done, sample sent to lab` → **coordinator:** ICU-2 marked done by Dr. Rahul. (Fallback if it asks to confirm: `@lotus-ward-coordinator done ICU-2`.)
-- **You run** `npm run switch:nudge -- --at 07:15` (half an hour later; repeating 06:45 makes the coordinator wait, since Rahul had no time to act). P-4's note is still waiting, so the coordinator tells the consultant in **Lotus Escalations**:
-  > Dr. Menon, still open after a reminder to Dr. Rahul:
-  > P-4 Aarav Sharma: handover note waiting for approval.
-- **You type** in Lotus Ward: `@lotus-ward-scribe Approve P-4`.
+One task from the night is late: ICU-2's STAT blood gas, due at 6 AM.
+- **You run:** `npm run switch:nudge -- --at 07:00`
+- **Pulse Flow posts:** `@lotus-ward-coordinator 07:00 check: 1 late task.`
+- **Coordinator posts** in Lotus Ward:
+  > Dr. Rahul, ICU-2 Vikram Singh: STAT repeat ABG and lactate was due at 6 AM, now 1 hour late.
+  > Reply "done ICU-2" once it's done.
+- **Nobody replies** (Rahul is in casualty).
+- **You run:** `npm run switch:nudge -- --at 08:00`. Still not done, so the coordinator tells the consultant in **Lotus Escalations**:
+  > Dr. Menon, ICU-2 Vikram Singh: STAT repeat ABG and lactate, due 6 AM, still not done an hour after the reminder.
+- **Priya types** in Lotus Ward once it's done: `@lotus-ward-coordinator ICU-2 ABG and lactate done, sample sent to lab` → **coordinator:** done by Dr. Priya.
 
-**Scene 4: consultant rounds** (Lotus Ward)
+**Scene 3: consultant rounds** (Lotus Ward)
 - **You type:**
   > @lotus-ward-scribe ICU-2 rounds: BP better at 96 by 60 on norad 0.05. MAP is fine, so no need to call the ICU registrar. Wean off norad by 12 noon and start RT feeds.
 - **Scribe replies:** the updated plan (new tasks, the registrar call stopped) and asks you to approve.
-- **You type:** `@lotus-ward-scribe Approve ICU-2`. (If Rahul tries, he's refused: only the consultant approves rounds.)
+- **You type:** `@lotus-ward-scribe Approve ICU-2`. (If Rahul tries first, he's refused: only the consultant approves rounds.)
 
-**Scene 5: walk-in** (Lotus OPD Desk)
-- **Anjali types:**
+**Scene 4: walk-in** (Lotus OPD Desk)
+- **Anjali (member 3) types:**
   > @lotus-opd-desk walk-in: Ramesh Patil, 54 saal, male. Subah se seene mein dard hai aur pasina aa raha hai. Mobile 98123 45678.
 - **OPD desk replies:** token, room and doctor, and "send him straight in". **Lotus Escalations** gets an emergency alert from Pulse Flow, though nobody typed "emergency".
 
-**Scene 6: pharmacy** (web app, then Lotus Pharmacy & Lab)
+**Scene 5: pharmacy** (web app, then Lotus Pharmacy & Lab)
 - In the web app, `/opd` as Dr. Rao → call next → dictate → sign. **Pulse Flow posts** the signed prescription in Lotus Pharmacy & Lab.
-- **Pharmacist types:** `@lotus-fulfilment DER-001 preparing`, then `@lotus-fulfilment DER-001 ready, send the patient to counter 2` → DER-001 ready. (DER-001 starts queued, so it must be prepared first.)
+- **Farhan (member 3) types:** `@lotus-fulfilment DER-001 preparing`, then `@lotus-fulfilment DER-001 ready, send the patient to counter 2` → DER-001 ready.
 
-**Scene 7: the record** — web app `/audit` → **Switch rooms** as Deepak: every agent action under the person it acted for.
+**Scene 6: the record** — web app `/audit` → **Switch rooms** as Deepak: every agent action under the person it acted for.
 
 ## If something doesn't work
 

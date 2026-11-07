@@ -2,7 +2,7 @@
 
 One page per person. Send each teammate their section; they can keep it open on their phone while recording.
 
-Doctors' lines are in English, as handovers and consultant dictation must be, with the short forms Indian wards use (pyelo, inj, KFT, RT feeds). The front desk speaks the way the OPD counter does, in Hinglish. Speak the lines with Wispr Flow or paste them. Bed numbers and order ids are kept explicit so the agents can't misread them.
+Doctors speak English, as handovers and consultant dictation must be, with the short forms Indian wards use (pyelo, inj, KFT, RT feeds). The front desk speaks the way the OPD counter does, in Hinglish. Speak the lines with Wispr Flow or paste them. Bed numbers and order ids are kept explicit so the agents can't misread them.
 
 **The one rule:** to talk to an agent, start the message with `@` and its name. Anything without a tag is ordinary chat, and the agents ignore it.
 
@@ -12,11 +12,15 @@ Doctors' lines are in English, as handovers and consultant dictation must be, wi
 
 | Person | Plays | Telegram groups |
 |---|---|---|
-| **Host** (laptop) | **Dr. Suresh Menon**, consultant (MD Medicine), does rounds after OPD | all four |
-| **Member 2** | **Dr. Rahul Verma**, night PG covering the ward and casualty calls | Lotus Ward |
-| **Member 3** | **Anjali Desai**, front desk (and the pharmacist in scene 6) | Lotus Ward, Lotus OPD Desk, Lotus Pharmacy & Lab |
+| **Host** (laptop) | **Dr. Suresh Menon**, consultant | all four |
+| **Member 2** | **Dr. Rahul Verma**, night PG | Lotus Ward |
+| **Member 3** | **Dr. Priya Raghavan**, day PG, in Lotus Ward; **Anjali** (front desk) in Lotus OPD Desk; **Farhan** (pharmacist) in Lotus Pharmacy & Lab | Lotus Ward, Lotus OPD Desk, Lotus Pharmacy & Lab |
 
-Your Telegram @username must be mapped to your role in `.env` (`PULSE_FLOW_CHAT_HANDLES`, see [TELEGRAM.md](./TELEGRAM.md) step 7), or the agents won't know who you are.
+One line in `.env` maps member 3 to all three roles, one per group:
+
+```bash
+PULSE_FLOW_CHAT_HANDLES=<host>=u-menon,<member2>=u-rahul,<member3>=u-priya,<member3>=u-anjali@opd-desk,<member3>=u-farhan@fulfilment
+```
 
 ## Before every take (host)
 
@@ -27,41 +31,62 @@ npm run dev
 
 Then send `!reset-all-agents` in **Lotus Ward**, **Lotus Escalations**, **Lotus OPD Desk** and **Lotus Pharmacy & Lab**, and wait for each agent's "reset" reply. Don't run `npm run switch:nudge -- --watch` while recording.
 
+## The story in one line each
+
+1. **Handover:** Rahul hands the night over to Priya in Lotus Ward. Priya approves it. Dr. Menon gets the critical patient in Lotus Escalations.
+2. **Late task:** at 7:00 the coordinator reminds Rahul about a late blood gas. Nobody does it, so at 8:00 it tells Dr. Menon. Priya does it and says so.
+3. **Rounds:** Dr. Menon dictates rounds for ICU-2 and approves the new plan.
+4. **Walk-in:** Anjali registers a chest-pain patient at the OPD desk; it's escalated as an emergency.
+5. **Pharmacy:** a prescription is signed in the web app; Farhan moves an order to ready.
+6. **Record:** the audit log shows every action under the person it was done for.
+
 ---
 
 ## Dr. Rahul Verma (member 2): Lotus Ward
 
-**Scene 1, the night handover, around 3 AM.** Hold Wispr Flow and say it, or paste:
+**Scene 1, the handover.** Hold Wispr Flow and say it, or paste:
 
 ```
-@lotus-ward-scribe Sir, night handover. Bed 21 Fatima Khan, pyelo with AKI, on inj ceftriaxone 1 gram BD. Patient is stable, but BP at 2 AM was 80 by 50, pulse 104. Repeat BP at 4 AM and send KFT at 8 in the morning. Bed 7 Meera Iyer, DKA resolved, sugars 140 to 180 on basal-bolus, taking orally well, discharge after Menon sir's round.
+@lotus-ward-scribe Handover to Dr. Priya. Bed 21 Fatima Khan, pyelo with AKI, on inj ceftriaxone 1 gram BD. Patient is stable, but BP at 2 AM was 80 by 50, pulse 104. Repeat BP at 4 AM and send KFT at 8 in the morning. Bed 7 Meera Iyer, DKA resolved, sugars 140 to 180 on basal-bolus, taking orally well, discharge after Menon sir's round.
 ```
 
-You'll see: two short drafts. Bed 21 is marked critical even though you said "stable", because the BP rule overrode it. Don't approve them; that's Dr. Menon's line.
+You'll see: one short draft per bed. Bed 21 is marked critical even though you said "stable", because the BP rule overrode it. Priya approves them, not you.
 
-**Scene 3, the coordinator asks you.** After the host runs the 06:45 check, the coordinator writes "Dr. Rahul, 2 things from the night: ICU-2 … P-4 …". Reply:
+**Scene 2.** The coordinator reminds you about ICU-2 at 7:00. **Don't reply**: you're busy in casualty, which is why it goes to Dr. Menon next.
+
+**Scene 3 (optional).** After Dr. Menon's rounds draft appears, try:
+
+```
+@lotus-ward-scribe Approve ICU-2
+```
+
+You'll see: refused. Only the consultant approves a rounds plan.
+
+---
+
+## Member 3
+
+### As Dr. Priya Raghavan, in Lotus Ward
+
+**Scene 1, take the handover.** After the scribe posts the drafts:
+
+```
+@lotus-ward-scribe Approve 21 and 7
+```
+
+You'll see: both approved, under your name.
+
+**Scene 2, close the late task.** After the coordinator's message to Dr. Menon appears in Lotus Escalations:
 
 ```
 @lotus-ward-coordinator ICU-2 ABG and lactate done, sample sent to lab
 ```
 
-You'll see: the ICU-2 task marked done by Dr. Rahul. If it asks you to confirm instead, send `@lotus-ward-coordinator done ICU-2`. Leave P-4 alone; that's what gets escalated.
+You'll see: ICU-2 marked done by Dr. Priya. If it asks you to confirm instead, send `@lotus-ward-coordinator done ICU-2`.
 
-That's all for Rahul.
+### As Anjali, in Lotus OPD Desk
 
----
-
-## Anjali Desai (member 3)
-
-**Scene 2, Lotus Ward: try to approve (you'll be refused, on purpose).**
-
-```
-@lotus-ward-scribe bed 21 ka note approve kar dijiye, sir ne bola tha
-```
-
-You'll see: the front desk can't approve clinical notes, and who can.
-
-**Scene 5, Lotus OPD Desk: a walk-in at the counter.**
+**Scene 4, a walk-in at the counter.**
 
 ```
 @lotus-opd-desk walk-in: Ramesh Patil, 54 saal, male. Subah se seene mein dard hai aur pasina aa raha hai. Mobile 98123 45678.
@@ -69,7 +94,9 @@ You'll see: the front desk can't approve clinical notes, and who can.
 
 You'll see: a token, room and doctor, and "send him straight in". Lotus Escalations gets an emergency alert from Pulse Flow, though you never typed "emergency".
 
-**Scene 6, Lotus Pharmacy & Lab: you're the pharmacist now.** The host remaps you to Farhan (pharmacist) between takes. Then, one message at a time:
+### As Farhan, in Lotus Pharmacy & Lab
+
+**Scene 5, after the host signs a prescription.** One message at a time:
 
 ```
 @lotus-fulfilment DER-001 preparing
@@ -79,41 +106,29 @@ You'll see: a token, room and doctor, and "send him straight in". Lotus Escalati
 @lotus-fulfilment DER-001 ready, send the patient to counter 2
 ```
 
-You'll see: DER-001 moved to preparing, then to ready. (Optional: `@lotus-fulfilment DER-001 dispensed` before preparing shows the agent refusing to skip a step.)
+You'll see: DER-001 moved to preparing, then to ready.
 
 ---
 
 ## Dr. Suresh Menon (host)
 
-**Scene 2, Lotus Ward: approve Rahul's two notes** (after Anjali is refused):
+**Scene 1.** Watch **Lotus Escalations**: Pulse Flow posts bed 21 as critical the moment the handover is written. You don't need to type anything.
 
-```
-@lotus-ward-scribe Approve 21 and 7. Recheck BP for 21 at 4 AM.
-```
-
-You'll see: both approved, under your name. Name the beds; don't say "approve all": that would also approve P-4's waiting note, and scene 3 needs it.
-
-**Scene 3, terminal: wake the coordinator.**
+**Scene 2, terminal: the 7:00 check.**
 
 ```bash
-npm run switch:nudge -- --at 06:45
+npm run switch:nudge -- --at 07:00
 ```
 
-Pulse Flow posts `@lotus-ward-coordinator 06:45 check: 1 late task, 1 note waiting for approval.`, and the coordinator asks Rahul. **After Rahul replies**, run the next check, half an hour later:
+Pulse Flow posts `@lotus-ward-coordinator 07:00 check: 1 late task.` and the coordinator reminds Rahul in Lotus Ward. Wait a few seconds with no reply, then run the 8:00 check:
 
 ```bash
-npm run switch:nudge -- --at 07:15
+npm run switch:nudge -- --at 08:00
 ```
 
-You'll see, in **Lotus Escalations**: "Dr. Menon, still open after a reminder to Dr. Rahul: P-4 Aarav Sharma: handover note waiting…". Close it from **Lotus Ward**:
+You'll see, in **Lotus Escalations**: "Dr. Menon, ICU-2 Vikram Singh: STAT repeat ABG and lactate, due 6 AM, still not done an hour after the reminder." Then Priya closes it.
 
-```
-@lotus-ward-scribe Approve P-4
-```
-
-(Repeating 06:45 instead of 07:15 makes the coordinator hold off, because its reminder went out seconds ago.)
-
-**Scene 4, Lotus Ward: rounds after OPD.**
+**Scene 3, Lotus Ward: rounds.**
 
 ```
 @lotus-ward-scribe ICU-2 rounds: BP better at 96 by 60 on norad 0.05. MAP is fine, so no need to call the ICU registrar. Wean off norad by 12 noon and start RT feeds.
@@ -125,9 +140,9 @@ You'll see: the updated plan (new tasks, the registrar call stopped) and a reque
 @lotus-ward-scribe Approve ICU-2
 ```
 
-**Scene 6, web app: sign a prescription.** In `/opd`, switch to Dr. Arvind Rao (name pill, top right) → **Call next** → dictate → **Sign**. Pulse Flow posts the signed prescription in Lotus Pharmacy & Lab. Then Anjali plays the pharmacist.
+**Scene 5, web app: sign a prescription.** In `/opd`, switch to Dr. Arvind Rao (name pill, top right) → **Call next** → dictate → **Sign**. Pulse Flow posts the signed prescription in Lotus Pharmacy & Lab. Then Farhan moves the order.
 
-**Scene 7, web app: the record.** `/audit` → **Switch rooms**, as Deepak (facility admin): every agent action, under the person it acted for.
+**Scene 6, web app: the record.** `/audit` → **Switch rooms**, as Deepak (facility admin): every agent action, under the person it acted for.
 
 ---
 
@@ -136,12 +151,12 @@ You'll see: the updated plan (new tasks, the registrar call stopped) and a reque
 Shows what Switch adds. Stop Switch Console (or comment out the `SWITCH_*` lines in `.env`), restart `npm run dev`, and run:
 
 ```bash
-npm run switch:nudge -- --at 06:45
+npm run switch:nudge -- --at 07:00
 ```
 
 - The header says **Switch off**, and the ward screen says nobody is messaged and no agent follows up.
 - A critical handover in the web app shows "Not sent: Switch is off. Only people looking at this screen will know."
-- The check prints the late items and says nothing was sent. Nobody asks Rahul, and nobody tells Dr. Menon.
+- The check prints the late task and says nothing was sent. Nobody reminds Rahul, and nobody tells Dr. Menon.
 
 ---
 

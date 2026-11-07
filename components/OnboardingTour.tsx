@@ -30,25 +30,25 @@ const STEPS: Step[] = [
   {
     target: "approvals",
     title: "Nothing goes live unchecked",
-    body: "The AI writes drafts. You check them against what you said, see every correction it made, fill in anything marked Pending, then approve.",
+    body: "The AI writes drafts. Open To approve, check them against what was said, fill in anything marked Pending, then approve.",
     tint: "bg-butter-100 text-butter-700",
   },
   {
     target: "overview",
-    title: "The ward at a glance",
-    body: "Blush means critical, mint means stable. Tap a tile to filter the patient list.",
+    title: "What needs you",
+    body: "What needs you right now: critical patients, notes to approve, open tasks. Tap a number to open that list.",
     tint: "bg-blush-100 text-blush-700",
   },
   {
     target: "patients",
     title: "Patients and live rounds",
-    body: "Critical patients pulse in blush, even before sign-off. Tap the stethoscope to open live rounds and capture the consultant’s orders at the bedside.",
+    body: "Critical patients come first, even before sign-off. Tap a patient to open rounds and capture the consultant’s orders at the bedside.",
     tint: "bg-mint-100 text-mint-700",
   },
   {
     target: "checklist",
     title: "Your ward checklist",
-    body: "Every approved task from every handover and round, most urgent first. Tap the circle to tick it off. Your name is recorded against it.",
+    body: "Every approved task, most urgent first. Tap the circle to tick it off. Your name is recorded against it.",
     tint: "bg-mint-100 text-mint-700",
   },
   {

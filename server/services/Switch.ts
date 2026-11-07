@@ -139,17 +139,13 @@ export function buildEmergencyWalkIn(p: {
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 export function buildWardNudge(f: WardFollowups, coordinator: string): RoomMessage | null {
-  if (!f.overdueTasks.length && !f.staleDrafts.length) return null;
-  const counts = [
-    f.overdueTasks.length ? `${plural(f.overdueTasks.length, "late task")}` : "",
-    f.staleDrafts.length ? `${plural(f.staleDrafts.length, "note")} waiting for approval` : "",
-  ].filter(Boolean);
+  if (!f.overdueTasks.length) return null;
   return {
     event: "WARD_NUDGE",
     room: "ward",
-    patientIds: [...new Set([...f.overdueTasks.map((t) => t.patientId), ...f.staleDrafts.map((d) => d.patientId)])],
-    itemIds: [...f.overdueTasks.map((t) => t.taskId), ...f.staleDrafts.map((d) => d.noteId)],
-    text: `@${coordinator} ${istHhmm(new Date(f.checkedAt))} check: ${counts.join(", ")}.`,
+    patientIds: [...new Set(f.overdueTasks.map((t) => t.patientId))],
+    itemIds: f.overdueTasks.map((t) => t.taskId),
+    text: `@${coordinator} ${istHhmm(new Date(f.checkedAt))} check: ${plural(f.overdueTasks.length, "late task")}.`,
   };
 }
 
